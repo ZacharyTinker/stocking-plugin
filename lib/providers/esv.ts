@@ -2,6 +2,9 @@
  * ESV API provider — api.esv.org
  * API key must be set as ESV_API_KEY in environment variables.
  * Called server-side only (API route).
+ *
+ * The ESV API limits requests to ~500 verses. We chunk large chapter
+ * ranges into groups of CHUNK_SIZE chapters and combine results.
  */
 
 import { Verse } from "@/types/scripture";
@@ -10,7 +13,31 @@ import { parseVerseText } from "./parseVerseText";
 
 const BASE = "https://api.esv.org/v3/passage/text/";
 
+// 5 chapters per chunk ≈ 125 verses for typical NT chapters.
+// Conservative enough to handle long chapters (Psalms 119 = 176 verses alone).
+const CHUNK_SIZE = 5;
+
 export async function fetchESVPassage(ref: PassageRef, apiKey: string): Promise<Verse[]> {
+  const totalChapters = ref.endChapter - ref.startChapter + 1;
+
+  if (totalChapters <= CHUNK_SIZE) {
+    return fetchChunk(ref, apiKey);
+  }
+
+  const allVerses: Verse[] = [];
+  let chunkStart = ref.startChapter;
+
+  while (chunkStart <= ref.endChapter) {
+    const chunkEnd = Math.min(chunkStart + CHUNK_SIZE - 1, ref.endChapter);
+    const verses = await fetchChunk({ ...ref, startChapter: chunkStart, endChapter: chunkEnd }, apiKey);
+    allVerses.push(...verses);
+    chunkStart = chunkEnd + 1;
+  }
+
+  return allVerses;
+}
+
+async function fetchChunk(ref: PassageRef, apiKey: string): Promise<Verse[]> {
   const query = buildQuery(ref);
   const url = `${BASE}?${new URLSearchParams({
     q: query,
@@ -40,7 +67,7 @@ export async function fetchESVPassage(ref: PassageRef, apiKey: string): Promise<
 
   if (!res.ok) {
     const body = await res.text();
-    throw new Error(`ESV API error ${res.status}: ${body}`);
+    throw new Error(`ESV API error ${res.status} (${ref.book} ${ref.startChapter}–${ref.endChapter}): ${body}`);
   }
 
   const data = await res.json() as { passages?: string[] };
