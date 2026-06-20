@@ -21,7 +21,7 @@ export default function ExportButtons({ result, tokenOpts, displayOpts }: Props)
       tokenOpts,
       tokenOpts.includeUniqueWords,
       tokenOpts.includeUniquePhrases,
-      displayOpts.includeSectionHeadings
+      displayOpts
     );
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
@@ -32,6 +32,26 @@ export default function ExportButtons({ result, tokenOpts, displayOpts }: Props)
   }
 
   function handleHTML() {
+    const { wordStyle, phraseStyle, fontSize } = displayOpts;
+
+    function styleAttr(s: typeof wordStyle): string {
+      const parts: string[] = [];
+      if (s.bold) parts.push("font-weight:bold");
+      if (s.italic) parts.push("font-style:italic");
+      if (s.underline) parts.push("text-decoration:underline");
+      if (s.highlight) parts.push(`background-color:${s.highlight}`);
+      if (s.color) parts.push(`color:${s.color}`);
+      if (s.sizeBoost) parts.push(`font-size:${fontSize + s.sizeBoost}px`);
+      return parts.join(";");
+    }
+
+    function segStyle(seg: { isUniqueWord: boolean; isUniquePhrase: boolean }): string {
+      const parts: string[] = [];
+      if (seg.isUniquePhrase) parts.push(styleAttr(phraseStyle));
+      if (seg.isUniqueWord) parts.push(styleAttr(wordStyle));
+      return parts.filter(Boolean).join(";");
+    }
+
     const book = verses[0]?.book ?? "Scripture";
     let html = `<!DOCTYPE html>
 <html lang="en">
@@ -40,14 +60,12 @@ export default function ExportButtons({ result, tokenOpts, displayOpts }: Props)
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>${book} - Bible Quizzing Markup</title>
 <style>
-  body { font-family: ${displayOpts.fontFamily}; font-size: ${displayOpts.fontSize}px; line-height: ${displayOpts.lineSpacing}; max-width: 800px; margin: 0 auto; padding: 2rem; }
+  body { font-family: ${displayOpts.fontFamily}; font-size: ${fontSize}px; line-height: ${displayOpts.lineSpacing}; max-width: 800px; margin: 0 auto; padding: 2rem; }
   h1.book-title { font-size: 2em; margin-top: 2rem; }
   h2.chapter-heading { font-size: 1.5em; margin-top: 1.5rem; }
   h3.section-heading { font-size: 1.1em; font-style: italic; margin-top: 1rem; color: #555; }
   .verse-number { font-size: 0.75em; color: #888; margin-right: 0.25em; vertical-align: super; }
   .verse-line { margin: 0.2em 0; }
-  .unique-word { font-weight: bold; }
-  .unique-phrase { text-decoration: underline; }
 </style>
 </head>
 <body>\n`;
@@ -73,9 +91,9 @@ export default function ExportButtons({ result, tokenOpts, displayOpts }: Props)
       const segments = markupVerse(verse.text, uniqueWords, uniquePhrases, tokenOpts, tokenOpts.includeUniqueWords, tokenOpts.includeUniquePhrases);
       html += `<p class="verse-line"><sup class="verse-number">${verse.verse}</sup>`;
       for (const seg of segments) {
-        const classes = [seg.isUniqueWord ? "unique-word" : "", seg.isUniquePhrase ? "unique-phrase" : ""].filter(Boolean).join(" ");
-        if (classes) {
-          html += `<span class="${classes}">${esc(seg.text)} </span>`;
+        const inlineStyle = segStyle(seg);
+        if (inlineStyle) {
+          html += `<span style="${inlineStyle}">${esc(seg.text)} </span>`;
         } else {
           html += esc(seg.text) + " ";
         }

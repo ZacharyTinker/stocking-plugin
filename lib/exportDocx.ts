@@ -4,28 +4,54 @@ import {
   Paragraph,
   TextRun,
   HeadingLevel,
-  AlignmentType,
 } from "docx";
-import { Verse } from "@/types/scripture";
-import { MarkedSegment } from "@/types/scripture";
-import { TokenizationOptions } from "@/types/scripture";
-import { analyzeVerses } from "./analyze";
+import { Verse, MarkedSegment, TokenizationOptions, MarkupStyle, DisplayOptions } from "@/types/scripture";
 import { markupVerse } from "./markup";
+
+function hexToShading(hex: string): string {
+  // DOCX shading colors are 6-char hex without '#'
+  return hex.replace("#", "").toUpperCase();
+}
 
 function segmentsToRuns(
   verseNumber: number,
-  segments: MarkedSegment[]
+  segments: MarkedSegment[],
+  wordStyle: MarkupStyle,
+  phraseStyle: MarkupStyle,
+  baseSizePt: number
 ): TextRun[] {
   const runs: TextRun[] = [
     new TextRun({ text: `${verseNumber}`, bold: false, superScript: true, size: 16, color: "888888" }),
     new TextRun({ text: " " }),
   ];
   for (const seg of segments) {
+    // Merge styles: phrase first, word on top (word wins for conflicting props)
+    const s: MarkupStyle = seg.isUniqueWord
+      ? {
+          bold: (seg.isUniquePhrase ? phraseStyle.bold : false) || wordStyle.bold,
+          italic: (seg.isUniquePhrase ? phraseStyle.italic : false) || wordStyle.italic,
+          underline: (seg.isUniquePhrase ? phraseStyle.underline : false) || wordStyle.underline,
+          highlight: wordStyle.highlight || (seg.isUniquePhrase ? phraseStyle.highlight : ""),
+          color: wordStyle.color || (seg.isUniquePhrase ? phraseStyle.color : ""),
+          sizeBoost: wordStyle.sizeBoost || (seg.isUniquePhrase ? phraseStyle.sizeBoost : 0),
+        }
+      : seg.isUniquePhrase
+      ? phraseStyle
+      : { bold: false, italic: false, underline: false, highlight: "", color: "", sizeBoost: 0 };
+
+    // DOCX sizes are in half-points; baseSizePt is in px (approx 1px ≈ 0.75pt)
+    const basePt = Math.round(baseSizePt * 0.75);
+    const sizePt = basePt + Math.round(s.sizeBoost * 0.75);
+
     runs.push(
       new TextRun({
         text: seg.text + " ",
-        bold: seg.isUniqueWord || (seg.isUniquePhrase && seg.isUniqueWord),
-        underline: seg.isUniquePhrase ? {} : undefined,
+        bold: s.bold,
+        italics: s.italic,
+        underline: s.underline ? {} : undefined,
+        color: s.color ? s.color.replace("#", "") : undefined,
+        shading: s.highlight ? { fill: hexToShading(s.highlight) } : undefined,
+        size: s.sizeBoost ? sizePt * 2 : undefined,
       })
     );
   }
@@ -39,8 +65,9 @@ export async function exportToDocx(
   opts: TokenizationOptions,
   includeUniqueWords: boolean,
   includeUniquePhrases: boolean,
-  includeSectionHeadings: boolean
+  displayOpts: DisplayOptions
 ): Promise<Blob> {
+  const { includeSectionHeadings, wordStyle, phraseStyle, fontSize } = displayOpts;
   const paragraphs: Paragraph[] = [];
 
   let currentBook = "";
@@ -92,7 +119,7 @@ export async function exportToDocx(
 
     paragraphs.push(
       new Paragraph({
-        children: segmentsToRuns(verse.verse, segments),
+        children: segmentsToRuns(verse.verse, segments, wordStyle, phraseStyle, fontSize),
         spacing: { after: 60 },
       })
     );

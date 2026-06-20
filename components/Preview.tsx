@@ -1,7 +1,18 @@
 "use client";
 
-import { Verse, TokenizationOptions, DisplayOptions, AnalysisResult } from "@/types/scripture";
+import { Verse, TokenizationOptions, DisplayOptions, AnalysisResult, MarkupStyle } from "@/types/scripture";
 import { markupVerse } from "@/lib/markup";
+
+function styleToCSS(s: MarkupStyle, baseFontSize: number): React.CSSProperties {
+  return {
+    fontWeight: s.bold ? "bold" : undefined,
+    fontStyle: s.italic ? "italic" : undefined,
+    textDecoration: s.underline ? "underline" : undefined,
+    backgroundColor: s.highlight || undefined,
+    color: s.color || undefined,
+    fontSize: s.sizeBoost ? `${baseFontSize + s.sizeBoost}px` : undefined,
+  };
+}
 
 interface Props {
   result: AnalysisResult;
@@ -68,14 +79,21 @@ export default function Preview({ result, tokenOpts, displayOpts }: Props) {
           {verse.verse}
         </sup>
         {segments.map((seg, i) => {
+          let style: React.CSSProperties = {};
+          if (seg.isUniquePhrase) {
+            style = { ...style, ...styleToCSS(displayOpts.phraseStyle, displayOpts.fontSize) };
+          }
+          if (seg.isUniqueWord) {
+            style = { ...style, ...styleToCSS(displayOpts.wordStyle, displayOpts.fontSize) };
+          }
           const cls = [
-            seg.isUniqueWord ? "unique-word font-bold" : "",
-            seg.isUniquePhrase ? "unique-phrase underline" : "",
+            seg.isUniqueWord ? "unique-word" : "",
+            seg.isUniquePhrase ? "unique-phrase" : "",
           ]
             .filter(Boolean)
             .join(" ");
           return (
-            <span key={i} className={cls || undefined}>
+            <span key={i} className={cls || undefined} style={Object.keys(style).length ? style : undefined}>
               {seg.text}{" "}
             </span>
           );

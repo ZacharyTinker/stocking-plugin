@@ -26,6 +26,8 @@ const DEFAULT_DISPLAY_OPTS: DisplayOptions = {
   lineSpacing: 1.8,
   includeSectionHeadings: true,
   includeFootnotes: false,
+  wordStyle: { bold: true, italic: false, underline: false, highlight: "", color: "", sizeBoost: 0 },
+  phraseStyle: { bold: false, italic: false, underline: true, highlight: "", color: "", sizeBoost: 0 },
 };
 
 type Tab = "input" | "preview";
