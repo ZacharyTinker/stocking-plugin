@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { Verse } from "@/types/scripture";
 import { BOOKS, chapterCount } from "@/lib/bookList";
+import { TRANSLATIONS } from "@/lib/translations";
 
 interface Props {
   onFetched: (verses: Verse[]) => void;
@@ -18,37 +19,35 @@ interface Segment {
 let nextId = 1;
 
 function makeSegment(book = "1 Corinthians"): Segment {
-  const chapters = chapterCount(book);
-  return { id: nextId++, book, startChapter: 1, endChapter: chapters };
+  return { id: nextId++, book, startChapter: 1, endChapter: chapterCount(book) };
 }
 
 const OT = BOOKS.filter((b) => b.testament === "OT");
 const NT = BOOKS.filter((b) => b.testament === "NT");
 
 export default function PassageSelector({ onFetched }: Props) {
+  const [translation, setTranslation] = useState("esv");
   const [segments, setSegments] = useState<Segment[]>([makeSegment()]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+
+  const selectedTranslation = TRANSLATIONS.find((t) => t.id === translation)!;
 
   function updateSegment(id: number, patch: Partial<Omit<Segment, "id">>) {
     setSegments((prev) =>
       prev.map((seg) => {
         if (seg.id !== id) return seg;
         const updated = { ...seg, ...patch };
-        // Keep endChapter >= startChapter
-        if (updated.startChapter > updated.endChapter) {
-          updated.endChapter = updated.startChapter;
-        }
+        if (updated.startChapter > updated.endChapter) updated.endChapter = updated.startChapter;
         return updated;
       })
     );
   }
 
   function handleBookChange(id: number, book: string) {
-    const chapters = chapterCount(book);
     setSegments((prev) =>
       prev.map((seg) =>
-        seg.id === id ? { ...seg, book, startChapter: 1, endChapter: chapters } : seg
+        seg.id === id ? { ...seg, book, startChapter: 1, endChapter: chapterCount(book) } : seg
       )
     );
   }
@@ -69,7 +68,7 @@ export default function PassageSelector({ onFetched }: Props) {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          provider: "esv",
+          translation,
           segments: segments.map(({ book, startChapter, endChapter }) => ({
             book,
             startChapter,
@@ -90,6 +89,27 @@ export default function PassageSelector({ onFetched }: Props) {
 
   return (
     <div className="space-y-4">
+      {/* Translation selector */}
+      <div>
+        <label className="block text-sm font-medium mb-1">Translation</label>
+        <div className="flex gap-2 flex-wrap">
+          {TRANSLATIONS.map((t) => (
+            <button
+              key={t.id}
+              onClick={() => setTranslation(t.id)}
+              className={`px-3 py-1.5 rounded border text-sm font-medium transition-colors ${
+                translation === t.id
+                  ? "bg-blue-600 text-white border-blue-600"
+                  : "bg-white text-gray-700 border-gray-300 hover:border-blue-400"
+              }`}
+            >
+              {t.name}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      {/* Passage segments */}
       <div className="space-y-2">
         {segments.map((seg, idx) => {
           const maxChapters = chapterCount(seg.book);
@@ -99,7 +119,6 @@ export default function PassageSelector({ onFetched }: Props) {
             <div key={seg.id} className="flex flex-wrap gap-3 items-center bg-gray-50 border rounded-lg px-3 py-2">
               <span className="text-xs text-gray-400 w-4 shrink-0">{idx + 1}</span>
 
-              {/* Book */}
               <select
                 className="border rounded px-2 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white"
                 value={seg.book}
@@ -115,7 +134,6 @@ export default function PassageSelector({ onFetched }: Props) {
 
               <span className="text-sm text-gray-500">Ch.</span>
 
-              {/* Start chapter */}
               <select
                 className="border rounded px-2 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white w-16"
                 value={seg.startChapter}
@@ -126,7 +144,6 @@ export default function PassageSelector({ onFetched }: Props) {
 
               <span className="text-sm text-gray-500">–</span>
 
-              {/* End chapter */}
               <select
                 className="border rounded px-2 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white w-16"
                 value={seg.endChapter}
@@ -137,7 +154,6 @@ export default function PassageSelector({ onFetched }: Props) {
                 ))}
               </select>
 
-              {/* Remove button */}
               {segments.length > 1 && (
                 <button
                   onClick={() => removeSegment(seg.id)}
@@ -170,9 +186,7 @@ export default function PassageSelector({ onFetched }: Props) {
 
       {error && <p className="text-red-600 text-sm">{error}</p>}
 
-      <p className="text-xs text-gray-500">
-        Scripture quotations are from the ESV® Bible, copyright © 2001 by Crossway. Used by permission. All rights reserved.
-      </p>
+      <p className="text-xs text-gray-500">{selectedTranslation.copyright}</p>
     </div>
   );
 }
