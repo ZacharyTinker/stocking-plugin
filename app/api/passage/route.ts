@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { fetchESVPassage } from "@/lib/providers/esv";
 import { PassageRef } from "@/lib/providers/types";
+import { Verse } from "@/types/scripture";
 
 export async function GET(req: NextRequest) {
   const { searchParams } = req.nextUrl;
@@ -28,8 +29,43 @@ export async function GET(req: NextRequest) {
       return NextResponse.json({ verses });
     }
 
-    // Future: api.bible provider
-    // if (provider === "apibible") { ... }
+    return NextResponse.json({ error: `Unknown provider: ${provider}` }, { status: 400 });
+  } catch (err: unknown) {
+    const message = err instanceof Error ? err.message : "Unknown error";
+    return NextResponse.json({ error: message }, { status: 500 });
+  }
+}
+
+/** POST body: { provider, segments: [{book, startChapter, endChapter}] } */
+export async function POST(req: NextRequest) {
+  const body = await req.json();
+  const provider: string = body.provider ?? "esv";
+  const segments: Array<{ book: string; startChapter: number; endChapter: number }> = body.segments ?? [];
+
+  if (!segments.length) {
+    return NextResponse.json({ error: "No segments provided." }, { status: 400 });
+  }
+
+  try {
+    if (provider === "esv") {
+      const apiKey = process.env.ESV_API_KEY;
+      if (!apiKey) {
+        return NextResponse.json({ error: "ESV_API_KEY is not configured on the server." }, { status: 500 });
+      }
+
+      const allVerses: Verse[] = [];
+      for (const seg of segments) {
+        const ref: PassageRef = {
+          book: seg.book,
+          startChapter: seg.startChapter,
+          endChapter: seg.endChapter,
+        };
+        const verses = await fetchESVPassage(ref, apiKey);
+        allVerses.push(...verses);
+      }
+
+      return NextResponse.json({ verses: allVerses });
+    }
 
     return NextResponse.json({ error: `Unknown provider: ${provider}` }, { status: 400 });
   } catch (err: unknown) {

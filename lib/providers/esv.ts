@@ -60,6 +60,19 @@ function buildQuery(ref: PassageRef): string {
   return ref.startChapter === ref.endChapter && !ref.endVerse ? start : `${start}-${end}`;
 }
 
+function stripMarkers(text: string): string {
+  return text
+    // Inline footnote markers: [a] [b] [c] ... (single lowercase letter in brackets)
+    .replace(/\[[a-z]\]/g, "")
+    // Inline cross-reference markers: (1) (2) or similar single-token parens
+    .replace(/\(\d+\)/g, "")
+    // Selah and other musical notations sometimes appear mid-verse
+    // (keep Selah as it is Scripture text — do not strip)
+    // Collapse extra whitespace left behind by stripping
+    .replace(/\s{2,}/g, " ")
+    .trim();
+}
+
 function parseESVResponse(data: ESVResponse, bookName: string, startChapter: number): Verse[] {
   const verses: Verse[] = [];
   const passages = data.passages ?? [];
@@ -69,46 +82,58 @@ function parseESVResponse(data: ESVResponse, bookName: string, startChapter: num
 
     // The ESV API plain-text response does not emit chapter-number lines when
     // include-passage-references is false. We track the chapter ourselves:
-    // start at startChapter and bump whenever verse [1] appears after the
-    // very first verse (every chapter starts at verse 1).
+    // start at startChapter and bump whenever verse [1] re-appears after the
+    // very first verse (every chapter always begins at verse 1).
     let currentChapter = startChapter;
     let seenFirstVerse = false;
     let currentHeading: string | undefined;
+    // Pending heading lines — accumulate consecutive heading lines so that
+    // e.g. a two-line heading ("The Resurrection of the Dead" on its own line
+    // followed by a blank) is joined before being attached to a verse.
+    const pendingHeadingParts: string[] = [];
+
+    function flushHeading() {
+      if (pendingHeadingParts.length > 0) {
+        currentHeading = pendingHeadingParts.join(" ");
+        pendingHeadingParts.length = 0;
+      }
+    }
 
     for (const rawLine of lines) {
       const line = rawLine.trim();
-      if (!line) continue;
 
-      // Verse line: [1] text ...   (ESV wraps verse numbers in brackets)
+      // Verse line: [N] text …  (ESV always wraps verse numbers in brackets)
       const verseMatch = line.match(/^\[(\d+)\]\s+(.+)$/);
       if (verseMatch) {
+        flushHeading();
         const verseNum = parseInt(verseMatch[1], 10);
 
-        // Detect chapter boundary: verse 1 appearing after the first verse
+        // Chapter boundary: verse 1 re-appearing after we've already seen verses
         if (verseNum === 1 && seenFirstVerse) {
           currentChapter += 1;
         }
         seenFirstVerse = true;
-
-        let text = verseMatch[2].trim();
-        // Strip inline footnote/cross-reference markers: [a], [b], (1), etc.
-        text = text.replace(/\[[a-z]\]/gi, "").replace(/\s{2,}/g, " ").trim();
 
         verses.push({
           book: bookName,
           chapter: currentChapter,
           verse: verseNum,
           sectionHeading: currentHeading,
-          text,
+          text: stripMarkers(verseMatch[2]),
         });
         currentHeading = undefined;
         continue;
       }
 
-      // Any other non-empty line before or between verses is a section heading.
-      // Skip bare digits (shouldn't appear, but defensive).
+      // Empty line — separates paragraphs; flush pending heading parts
+      if (!line) {
+        flushHeading();
+        continue;
+      }
+
+      // Any other non-empty, non-digit line is a section heading.
       if (!/^\d+$/.test(line)) {
-        currentHeading = line;
+        pendingHeadingParts.push(line);
       }
     }
   }

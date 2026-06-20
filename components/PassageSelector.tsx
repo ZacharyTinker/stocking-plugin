@@ -8,44 +8,78 @@ interface Props {
   onFetched: (verses: Verse[]) => void;
 }
 
-type Provider = "esv"; // extend here when api.bible is added
+interface Segment {
+  id: number;
+  book: string;
+  startChapter: number;
+  endChapter: number;
+}
+
+let nextId = 1;
+
+function makeSegment(book = "1 Corinthians"): Segment {
+  const chapters = chapterCount(book);
+  return { id: nextId++, book, startChapter: 1, endChapter: chapters };
+}
+
+const OT = BOOKS.filter((b) => b.testament === "OT");
+const NT = BOOKS.filter((b) => b.testament === "NT");
 
 export default function PassageSelector({ onFetched }: Props) {
-  const [provider] = useState<Provider>("esv");
-  const [book, setBook] = useState("1 Corinthians");
-  const [startChapter, setStartChapter] = useState(1);
-  const [endChapter, setEndChapter] = useState(1);
+  const [segments, setSegments] = useState<Segment[]>([makeSegment()]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
 
-  const maxChapters = chapterCount(book);
-  const chapterNums = Array.from({ length: maxChapters }, (_, i) => i + 1);
-
-  function handleBookChange(name: string) {
-    setBook(name);
-    setStartChapter(1);
-    setEndChapter(1);
+  function updateSegment(id: number, patch: Partial<Omit<Segment, "id">>) {
+    setSegments((prev) =>
+      prev.map((seg) => {
+        if (seg.id !== id) return seg;
+        const updated = { ...seg, ...patch };
+        // Keep endChapter >= startChapter
+        if (updated.startChapter > updated.endChapter) {
+          updated.endChapter = updated.startChapter;
+        }
+        return updated;
+      })
+    );
   }
 
-  function handleStartChapterChange(ch: number) {
-    setStartChapter(ch);
-    if (endChapter < ch) setEndChapter(ch);
+  function handleBookChange(id: number, book: string) {
+    const chapters = chapterCount(book);
+    setSegments((prev) =>
+      prev.map((seg) =>
+        seg.id === id ? { ...seg, book, startChapter: 1, endChapter: chapters } : seg
+      )
+    );
+  }
+
+  function addSegment() {
+    setSegments((prev) => [...prev, makeSegment()]);
+  }
+
+  function removeSegment(id: number) {
+    setSegments((prev) => (prev.length > 1 ? prev.filter((s) => s.id !== id) : prev));
   }
 
   async function handleFetch() {
     setError("");
     setLoading(true);
     try {
-      const params = new URLSearchParams({
-        provider,
-        book,
-        startChapter: String(startChapter),
-        endChapter: String(endChapter),
+      const res = await fetch("/api/passage", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          provider: "esv",
+          segments: segments.map(({ book, startChapter, endChapter }) => ({
+            book,
+            startChapter,
+            endChapter,
+          })),
+        }),
       });
-      const res = await fetch(`/api/passage?${params}`);
       const data = await res.json();
       if (!res.ok) throw new Error(data.error ?? "Fetch failed");
-      if (!data.verses || data.verses.length === 0) throw new Error("No verses returned. Check the passage reference.");
+      if (!data.verses?.length) throw new Error("No verses returned. Check the passage reference.");
       onFetched(data.verses);
     } catch (e: unknown) {
       setError(e instanceof Error ? e.message : "Unknown error");
@@ -54,76 +88,90 @@ export default function PassageSelector({ onFetched }: Props) {
     }
   }
 
-  const OT = BOOKS.filter((b) => b.testament === "OT");
-  const NT = BOOKS.filter((b) => b.testament === "NT");
-
   return (
     <div className="space-y-4">
-      <div className="flex flex-wrap gap-4 items-end">
-        {/* Translation badge — ESV only for now */}
-        <div>
-          <label className="block text-sm font-medium mb-1">Translation</label>
-          <div className="border rounded px-3 py-1.5 text-sm bg-gray-50 text-gray-700 w-28 text-center">
-            ESV
-          </div>
-        </div>
+      <div className="space-y-2">
+        {segments.map((seg, idx) => {
+          const maxChapters = chapterCount(seg.book);
+          const chapterNums = Array.from({ length: maxChapters }, (_, i) => i + 1);
 
-        {/* Book */}
-        <div>
-          <label className="block text-sm font-medium mb-1">Book</label>
-          <select
-            className="border rounded px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-            value={book}
-            onChange={(e) => handleBookChange(e.target.value)}
-          >
-            <optgroup label="Old Testament">
-              {OT.map((b) => <option key={b.name} value={b.name}>{b.name}</option>)}
-            </optgroup>
-            <optgroup label="New Testament">
-              {NT.map((b) => <option key={b.name} value={b.name}>{b.name}</option>)}
-            </optgroup>
-          </select>
-        </div>
+          return (
+            <div key={seg.id} className="flex flex-wrap gap-3 items-center bg-gray-50 border rounded-lg px-3 py-2">
+              <span className="text-xs text-gray-400 w-4 shrink-0">{idx + 1}</span>
 
-        {/* Start chapter */}
-        <div>
-          <label className="block text-sm font-medium mb-1">From chapter</label>
-          <select
-            className="border rounded px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-            value={startChapter}
-            onChange={(e) => handleStartChapterChange(Number(e.target.value))}
-          >
-            {chapterNums.map((n) => <option key={n} value={n}>{n}</option>)}
-          </select>
-        </div>
+              {/* Book */}
+              <select
+                className="border rounded px-2 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white"
+                value={seg.book}
+                onChange={(e) => handleBookChange(seg.id, e.target.value)}
+              >
+                <optgroup label="Old Testament">
+                  {OT.map((b) => <option key={b.name} value={b.name}>{b.name}</option>)}
+                </optgroup>
+                <optgroup label="New Testament">
+                  {NT.map((b) => <option key={b.name} value={b.name}>{b.name}</option>)}
+                </optgroup>
+              </select>
 
-        {/* End chapter */}
-        <div>
-          <label className="block text-sm font-medium mb-1">To chapter</label>
-          <select
-            className="border rounded px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-            value={endChapter}
-            onChange={(e) => setEndChapter(Number(e.target.value))}
-          >
-            {chapterNums.filter((n) => n >= startChapter).map((n) => (
-              <option key={n} value={n}>{n}</option>
-            ))}
-          </select>
-        </div>
+              <span className="text-sm text-gray-500">Ch.</span>
 
+              {/* Start chapter */}
+              <select
+                className="border rounded px-2 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white w-16"
+                value={seg.startChapter}
+                onChange={(e) => updateSegment(seg.id, { startChapter: Number(e.target.value) })}
+              >
+                {chapterNums.map((n) => <option key={n} value={n}>{n}</option>)}
+              </select>
+
+              <span className="text-sm text-gray-500">–</span>
+
+              {/* End chapter */}
+              <select
+                className="border rounded px-2 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white w-16"
+                value={seg.endChapter}
+                onChange={(e) => updateSegment(seg.id, { endChapter: Number(e.target.value) })}
+              >
+                {chapterNums.filter((n) => n >= seg.startChapter).map((n) => (
+                  <option key={n} value={n}>{n}</option>
+                ))}
+              </select>
+
+              {/* Remove button */}
+              {segments.length > 1 && (
+                <button
+                  onClick={() => removeSegment(seg.id)}
+                  className="text-gray-400 hover:text-red-500 text-lg leading-none ml-auto"
+                  title="Remove"
+                >
+                  ×
+                </button>
+              )}
+            </div>
+          );
+        })}
+      </div>
+
+      <div className="flex gap-3 items-center flex-wrap">
+        <button
+          onClick={addSegment}
+          className="border rounded px-4 py-1.5 text-sm text-gray-600 hover:bg-gray-50 transition-colors"
+        >
+          + Add book
+        </button>
         <button
           onClick={handleFetch}
           disabled={loading}
           className="bg-blue-600 text-white px-5 py-2 rounded text-sm hover:bg-blue-700 transition-colors disabled:opacity-50"
         >
-          {loading ? "Fetching…" : "Fetch passage →"}
+          {loading ? "Fetching…" : `Fetch ${segments.length > 1 ? `${segments.length} books` : "passage"} →`}
         </button>
       </div>
 
       {error && <p className="text-red-600 text-sm">{error}</p>}
 
       <p className="text-xs text-gray-500">
-        Scripture quotations are from the ESV® Bible (The Holy Bible, English Standard Version®), copyright © 2001 by Crossway, a publishing ministry of Good News Publishers. Used by permission. All rights reserved.
+        Scripture quotations are from the ESV® Bible, copyright © 2001 by Crossway. Used by permission. All rights reserved.
       </p>
     </div>
   );
