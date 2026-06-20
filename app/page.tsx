@@ -14,10 +14,10 @@ const DEFAULT_TOKEN_OPTS: TokenizationOptions = {
   hyphenatedWordsAsSingle: false,
   contractionsAsSingle: true,
   includePossessives: false,
-  analyzeTwoWordPhrases: true,
-  analyzeThreeWordPhrases: true,
+  analyzeTwoWordPhrases: false,
+  analyzeThreeWordPhrases: false,
   includeUniqueWords: true,
-  includeUniquePhrases: true,
+  includeUniquePhrases: false,
 };
 
 const DEFAULT_DISPLAY_OPTS: DisplayOptions = {
@@ -145,8 +145,7 @@ export default function Home() {
                 <div className="flex items-center justify-between flex-wrap gap-3">
                   <div className="text-sm text-gray-600">
                     <strong>{verses.length}</strong> verses &bull;{" "}
-                    <strong>{result.uniqueWords.size}</strong> unique words &bull;{" "}
-                    <strong>{result.uniquePhrases.size}</strong> unique phrases
+                    <strong>{result.uniqueWords.size}</strong> unique words across all {verses.length} verses
                   </div>
                   <ExportButtons result={result} tokenOpts={tokenOpts} displayOpts={displayOpts} />
                 </div>

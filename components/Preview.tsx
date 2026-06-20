@@ -61,7 +61,12 @@ export default function Preview({ result, tokenOpts, displayOpts }: Props) {
 
     elements.push(
       <p key={`v-${verse.book}-${verse.chapter}-${verse.verse}`} className="verse-line my-0.5">
-        <span className="verse-number text-xs text-gray-500 mr-1 select-none">{verse.verse}</span>
+        <sup
+          className="verse-number select-none"
+          style={{ fontSize: "0.6em", color: "#888", marginRight: "0.2em", verticalAlign: "super", fontWeight: "normal", fontStyle: "normal" }}
+        >
+          {verse.verse}
+        </sup>
         {segments.map((seg, i) => {
           const cls = [
             seg.isUniqueWord ? "unique-word font-bold" : "",

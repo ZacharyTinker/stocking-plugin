@@ -71,7 +71,7 @@ export default function ExportButtons({ result, tokenOpts, displayOpts }: Props)
       }
 
       const segments = markupVerse(verse.text, uniqueWords, uniquePhrases, tokenOpts, tokenOpts.includeUniqueWords, tokenOpts.includeUniquePhrases);
-      html += `<p class="verse-line"><span class="verse-number">${verse.verse}</span>`;
+      html += `<p class="verse-line"><sup class="verse-number">${verse.verse}</sup>`;
       for (const seg of segments) {
         const classes = [seg.isUniqueWord ? "unique-word" : "", seg.isUniquePhrase ? "unique-phrase" : ""].filter(Boolean).join(" ");
         if (classes) {

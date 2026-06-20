@@ -17,7 +17,8 @@ function segmentsToRuns(
   segments: MarkedSegment[]
 ): TextRun[] {
   const runs: TextRun[] = [
-    new TextRun({ text: `${verseNumber} `, bold: false, underline: undefined }),
+    new TextRun({ text: `${verseNumber}`, bold: false, superScript: true, size: 16, color: "888888" }),
+    new TextRun({ text: " " }),
   ];
   for (const seg of segments) {
     runs.push(
