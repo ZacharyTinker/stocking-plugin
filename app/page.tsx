@@ -2,6 +2,7 @@
 
 import { useState, useMemo } from "react";
 import ScriptureInput from "@/components/ScriptureInput";
+import PassageSelector from "@/components/PassageSelector";
 import Preview from "@/components/Preview";
 import SettingsPanel from "@/components/SettingsPanel";
 import ExportButtons from "@/components/ExportButtons";
@@ -28,12 +29,14 @@ const DEFAULT_DISPLAY_OPTS: DisplayOptions = {
 };
 
 type Tab = "input" | "preview";
+type InputMode = "api" | "manual";
 
 export default function Home() {
   const [verses, setVerses] = useState<Verse[]>([]);
   const [tokenOpts, setTokenOpts] = useState<TokenizationOptions>(DEFAULT_TOKEN_OPTS);
   const [displayOpts, setDisplayOpts] = useState<DisplayOptions>(DEFAULT_DISPLAY_OPTS);
   const [tab, setTab] = useState<Tab>("input");
+  const [inputMode, setInputMode] = useState<InputMode>("api");
   const [settingsOpen, setSettingsOpen] = useState(false);
 
   const result: AnalysisResult = useMemo(
@@ -101,9 +104,33 @@ export default function Home() {
         </div>
 
         {tab === "input" && (
-          <div className="bg-white border rounded-lg p-5 shadow-sm">
-            <h2 className="font-semibold text-gray-800 mb-4">Provide Scripture Text</h2>
-            <ScriptureInput onParsed={handleParsed} />
+          <div className="bg-white border rounded-lg p-5 shadow-sm space-y-5">
+            {/* Input mode toggle */}
+            <div className="flex gap-1 border rounded-lg p-1 w-fit bg-gray-100">
+              {([["api", "Fetch from ESV API"], ["manual", "Paste / Upload"]] as [InputMode, string][]).map(([mode, label]) => (
+                <button
+                  key={mode}
+                  onClick={() => setInputMode(mode)}
+                  className={`px-4 py-1.5 rounded text-sm font-medium transition-colors ${
+                    inputMode === mode ? "bg-white shadow text-gray-900" : "text-gray-500 hover:text-gray-700"
+                  }`}
+                >
+                  {label}
+                </button>
+              ))}
+            </div>
+
+            {inputMode === "api" ? (
+              <>
+                <h2 className="font-semibold text-gray-800">Select a passage</h2>
+                <PassageSelector onFetched={handleParsed} />
+              </>
+            ) : (
+              <>
+                <h2 className="font-semibold text-gray-800">Paste or upload Scripture text</h2>
+                <ScriptureInput onParsed={handleParsed} />
+              </>
+            )}
           </div>
         )}
 
