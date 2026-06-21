@@ -71,16 +71,29 @@ async function fetchChunk(ref: PassageRef, apiKey: string): Promise<Verse[]> {
   }
 
   const data = await res.json() as { passages?: string[] };
-  const text = (data.passages ?? []).join("\n");
+  if (!data.passages?.length) {
+    throw new Error(`ESV API returned no text for ${ref.book} ${ref.startChapter}–${ref.endChapter}. Check the passage reference.`);
+  }
+  const text = data.passages.join("\n");
   return parseVerseText(text, ref.book, ref.startChapter);
 }
 
 function buildQuery(ref: PassageRef): string {
+  if (ref.startChapter === ref.endChapter && !ref.endVerse) {
+    // Single chapter — "Luke 6" or "Luke 6:3"
+    return ref.startVerse
+      ? `${ref.book} ${ref.startChapter}:${ref.startVerse}`
+      : `${ref.book} ${ref.startChapter}`;
+  }
+
   const start = ref.startVerse
     ? `${ref.book} ${ref.startChapter}:${ref.startVerse}`
     : `${ref.book} ${ref.startChapter}`;
-  const end = ref.endVerse
-    ? `${ref.book} ${ref.endChapter}:${ref.endVerse}`
-    : `${ref.book} ${ref.endChapter}`;
-  return ref.startChapter === ref.endChapter && !ref.endVerse ? start : `${start}-${end}`;
+
+  // Use short-form end ("10" or "10:42") when the book is the same, so the
+  // ESV API receives "Luke 6-10" rather than "Luke 6-Luke 10". The latter can
+  // confuse the parser and return an empty passages array for some ranges.
+  const end = ref.endVerse ? `${ref.endChapter}:${ref.endVerse}` : `${ref.endChapter}`;
+
+  return `${start}-${end}`;
 }
