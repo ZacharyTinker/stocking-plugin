@@ -19,9 +19,10 @@ import { usfmId } from "@/lib/bookList";
 
 const BASE = "https://api.scripture.api.bible/v1";
 
-// 10 chapters per chunk ≈ 260 verses on average, well under the 500-verse limit.
-// Poetry books (Psalms) can average 10+ verses/chapter so we stay conservative.
-const CHUNK_SIZE = 10;
+// 5 chapters per chunk. Narrative NT books average ~50 verses/chapter (Luke ch1-10
+// = 512 verses), so 10 chapters blows past the 500-verse limit. 5 is safe for all
+// book types including Psalms (176 verses in ch 119 alone).
+const CHUNK_SIZE = 5;
 
 export async function fetchApiBiblePassage(
   ref: PassageRef,
@@ -60,8 +61,9 @@ async function fetchChunk(
 ): Promise<Verse[]> {
   const bookUsfm = usfmId(ref.book);
 
-  // Passage ID covers all verses in the chapter range
-  const passageId = `${bookUsfm}.${ref.startChapter}.1-${bookUsfm}.${ref.endChapter}.999`;
+  // Chapter-level passage IDs (no verse suffix) let api.bible return the full
+  // chapter range without risking rejection from a non-existent ".999" verse.
+  const passageId = `${bookUsfm}.${ref.startChapter}-${bookUsfm}.${ref.endChapter}`;
 
   const url = `${BASE}/bibles/${bibleId}/passages/${passageId}?${new URLSearchParams({
     "content-type": "text",
