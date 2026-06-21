@@ -59,6 +59,8 @@ export interface AnalysisResult {
   verses: Verse[];
   uniqueWords: Set<string>;
   uniquePhrases: Set<string>;
+  /** Normalized word → total occurrence count across all verses */
+  wordFrequency: Map<string, number>;
 }
 
 export type TokenKind = 'word' | 'phrase2' | 'phrase3';

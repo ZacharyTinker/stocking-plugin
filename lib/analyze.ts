@@ -83,5 +83,13 @@ export function analyzeVerses(verses: Verse[], opts: TokenizationOptions): Analy
     if (ids.size === 1) uniquePhrases.add(phrase);
   }
 
-  return { verses, uniqueWords, uniquePhrases };
+  // Word frequency: total occurrences (not deduplicated per verse)
+  const wordFrequency = new Map<string, number>();
+  for (const tokens of verseTokens.values()) {
+    for (const t of tokens) {
+      if (t) wordFrequency.set(t, (wordFrequency.get(t) ?? 0) + 1);
+    }
+  }
+
+  return { verses, uniqueWords, uniquePhrases, wordFrequency };
 }

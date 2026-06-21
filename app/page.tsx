@@ -7,6 +7,7 @@ import Preview from "@/components/Preview";
 import SettingsPanel from "@/components/SettingsPanel";
 import ExportButtons from "@/components/ExportButtons";
 import WordList from "@/components/WordList";
+import WordFrequency from "@/components/WordFrequency";
 import { Verse, TokenizationOptions, DisplayOptions, AnalysisResult, ElementStyle } from "@/types/scripture";
 import { analyzeVerses } from "@/lib/analyze";
 
@@ -52,7 +53,7 @@ export default function Home() {
     () =>
       verses.length > 0
         ? analyzeVerses(verses, tokenOpts)
-        : { verses: [], uniqueWords: new Set(), uniquePhrases: new Set() },
+        : { verses: [], uniqueWords: new Set(), uniquePhrases: new Set(), wordFrequency: new Map() },
     [verses, tokenOpts]
   );
 
@@ -63,7 +64,7 @@ export default function Home() {
 
   return (
     <div className="min-h-screen bg-gray-50">
-      <header className="bg-white border-b shadow-sm">
+      <header className="bg-white border-b shadow-sm no-print">
         <div className="max-w-5xl mx-auto px-4 py-3 flex items-center justify-between">
           <div>
             <h1 className="text-lg font-bold text-gray-800">Bible Quizzing Markup Tool</h1>
@@ -80,7 +81,7 @@ export default function Home() {
 
       <div className="max-w-5xl mx-auto px-4 py-6 space-y-6">
         {settingsOpen && (
-          <div className="bg-white border rounded-lg p-5 shadow-sm">
+          <div className="bg-white border rounded-lg p-5 shadow-sm no-print">
             <h2 className="font-semibold text-gray-800 mb-4">Settings</h2>
             <SettingsPanel
               tokenOpts={tokenOpts}
@@ -91,7 +92,7 @@ export default function Home() {
           </div>
         )}
 
-        <div className="flex border-b">
+        <div className="flex border-b no-print">
           {(["input", "preview"] as Tab[]).map((t) => (
             <button
               key={t}
@@ -151,14 +152,15 @@ export default function Home() {
               </div>
             ) : (
               <>
-                <div className="flex items-center justify-between flex-wrap gap-3">
+                <div className="flex items-center justify-between flex-wrap gap-3 no-print">
                   <div className="text-sm text-gray-600">
                     <strong>{verses.length}</strong> verses &bull;{" "}
                     <strong>{result.uniqueWords.size}</strong> unique words across all {verses.length} verses
                   </div>
                   <ExportButtons result={result} tokenOpts={tokenOpts} displayOpts={displayOpts} />
                 </div>
-                <WordList result={result} />
+                <div className="no-print"><WordList result={result} /></div>
+                <div className="no-print"><WordFrequency result={result} /></div>
                 <Preview result={result} tokenOpts={tokenOpts} displayOpts={displayOpts} />
               </>
             )}

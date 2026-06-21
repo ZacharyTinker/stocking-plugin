@@ -125,10 +125,19 @@ export default function ExportButtons({ result, tokenOpts, displayOpts }: Props)
     URL.revokeObjectURL(url);
   }
 
+  async function handleStudyCards() {
+    const { exportStudyCards } = await import("@/lib/exportStudyCards");
+    exportStudyCards(verses, uniqueWords, uniquePhrases, tokenOpts, displayOpts);
+  }
+
+  function handlePrint() {
+    window.print();
+  }
+
   if (verses.length === 0) return null;
 
   return (
-    <div className="flex gap-3 flex-wrap">
+    <div className="flex gap-3 flex-wrap no-print">
       <button
         onClick={handleDocx}
         className="bg-green-600 text-white px-5 py-2 rounded text-sm hover:bg-green-700 transition-colors"
@@ -140,6 +149,18 @@ export default function ExportButtons({ result, tokenOpts, displayOpts }: Props)
         className="bg-indigo-600 text-white px-5 py-2 rounded text-sm hover:bg-indigo-700 transition-colors"
       >
         Export HTML
+      </button>
+      <button
+        onClick={handleStudyCards}
+        className="bg-purple-600 text-white px-5 py-2 rounded text-sm hover:bg-purple-700 transition-colors"
+      >
+        Study Cards
+      </button>
+      <button
+        onClick={handlePrint}
+        className="border px-5 py-2 rounded text-sm text-gray-700 hover:bg-gray-50 transition-colors"
+      >
+        Print
       </button>
     </div>
   );
