@@ -1,18 +1,17 @@
 import { Verse } from "@/types/scripture";
 
 /**
- * Shared text parser for ESV and api.bible responses.
+ * Shared text parser for ESV and api.bible plain-text responses.
  *
- * Both APIs return plain-text passages where verse numbers appear as inline
- * [N] markers. Paragraphs may span multiple verses. Section headings appear
- * on their own lines without a [N] prefix.
+ * Both APIs return passages where verse numbers appear as inline [N] markers.
+ * Paragraphs may span multiple verses; section headings appear on lines without [N].
  *
- * Strategy:
- *   - Split each line on all [N] markers to extract individual verses.
- *   - Non-verse lines that appear between verses become section headings
- *     attached to the next verse encountered.
- *   - Chapter tracking: start at startChapter and increment each time
- *     verse [1] reappears after the first verse has been seen.
+ * Edge cases handled:
+ *   - [N] at end of line with no text → text continues on the next non-marker line
+ *   - Non-verse lines while no pending-verse exists → section heading candidates
+ *   - Bare digit lines (chapter numbers) → skipped
+ *   - USFM paragraph markers (\p, \q1, \m, …) that api.bible may include → stripped
+ *   - Chapter boundary: verse [1] reappearing after at least one verse has been seen
  */
 export function parseVerseText(
   rawText: string,
@@ -26,49 +25,98 @@ export function parseVerseText(
   let seenFirstVerse = false;
   const pendingHeading: string[] = [];
 
+  // When [N] appears with no following text on the same line, we park the verse
+  // metadata here and attach text from the next non-marker line.
+  let pendingVerse: { verseNum: number; chapter: number; heading: string | undefined } | null = null;
+
   function flushHeading(): string | undefined {
     const h = pendingHeading.join(" ").trim() || undefined;
     pendingHeading.length = 0;
     return h;
   }
 
+  function commitPendingVerse(text: string) {
+    if (!pendingVerse) return;
+    verses.push({
+      book: bookName,
+      chapter: pendingVerse.chapter,
+      verse: pendingVerse.verseNum,
+      sectionHeading: pendingVerse.heading,
+      text,
+    });
+    pendingVerse = null;
+  }
+
   for (const rawLine of lines) {
     const line = rawLine.trim();
+    if (!line) continue;
 
-    if (!line) {
-      // Empty line — paragraph break, flush any accumulated heading text
-      // only if no verses have been emitted after it yet (handled lazily)
-      continue;
-    }
+    // Strip USFM paragraph markers (api.bible sometimes includes them in text content)
+    const cleaned = line
+      .replace(/^\\[a-z][a-z0-9]* ?/i, "")   // leading \p, \q1, \m, \li1, etc.
+      .trim();
 
-    // Check if this line contains any [N] verse markers
-    if (!/\[\d+\]/.test(line)) {
-      // No verse markers → treat as section heading text
-      // Skip lines that look like chapter number labels (bare digit)
-      if (!/^\d+$/.test(line)) {
-        pendingHeading.push(line);
+    if (!cleaned) continue;
+
+    // No [N] verse markers on this line
+    if (!/\[\d+\]/.test(cleaned)) {
+      // Bare digit lines are chapter-number labels — skip them
+      if (/^\d+$/.test(cleaned)) continue;
+
+      if (pendingVerse) {
+        // This line is the text content for the pending empty-text verse
+        const text = stripMarkers(cleaned);
+        if (text) {
+          commitPendingVerse(text);
+          seenFirstVerse = true;
+        }
+        // If still empty after stripping (e.g. pure footnote marker line), keep waiting
+      } else {
+        // No pending verse — treat as potential section heading
+        pendingHeading.push(cleaned);
       }
       continue;
     }
 
-    // Split the line on [N] markers.
-    // "split" with a capture group includes the captured text in the result array.
-    // e.g. "[4] foo [5] bar" → ["", "4", " foo ", "5", " bar"]
-    const parts = line.split(/\[(\d+)\]/);
+    // This line has [N] markers.  If we had a pending empty-text verse, its text
+    // never came — push it with an empty string so the verse number is preserved.
+    if (pendingVerse) {
+      commitPendingVerse("");
+      seenFirstVerse = true;
+    }
+
+    // Split on [N] markers. Capture group keeps the number in the result array.
+    // "[4] foo [5] bar" → ["", "4", " foo ", "5", " bar"]
+    const parts = cleaned.split(/\[(\d+)\]/);
 
     for (let i = 1; i < parts.length; i += 2) {
       const verseNum = parseInt(parts[i], 10);
-      const text = stripMarkers((parts[i + 1] ?? "").trim());
+      const rawText = (parts[i + 1] ?? "").trim();
+      const text = stripMarkers(rawText);
 
-      if (!text) continue;
-
-      // Detect chapter boundary: [1] reappearing after we've seen at least one verse
+      // Detect chapter boundary: [1] reappearing after the first verse
       if (verseNum === 1 && seenFirstVerse) {
+        // Flush any pending verse before incrementing
+        if (pendingVerse) { commitPendingVerse(""); }
         currentChapter += 1;
       }
 
-      const heading = seenFirstVerse ? flushHeading() : flushHeading(); // always flush
+      const heading = flushHeading();
       seenFirstVerse = true;
+
+      if (!text) {
+        // [N] with no text — might be the last segment on the line, with text following
+        const isLastSegment = i + 2 >= parts.length;
+        if (isLastSegment) {
+          // Park it; next non-marker line will supply the text
+          pendingVerse = { verseNum, chapter: currentChapter, heading };
+        } else {
+          // Not the last segment — the verse genuinely has no text (e.g. merged [43][44] text)
+          // Push with empty string to preserve the verse number in the count
+          verses.push({ book: bookName, chapter: currentChapter, verse: verseNum, sectionHeading: heading, text: "" });
+        }
+        continue;
+      }
 
       verses.push({
         book: bookName,
@@ -80,13 +128,19 @@ export function parseVerseText(
     }
   }
 
+  // Flush any remaining pending verse at end of input
+  if (pendingVerse) {
+    commitPendingVerse("");
+  }
+
   return verses;
 }
 
 function stripMarkers(text: string): string {
   return text
-    .replace(/\[[a-z]\]/g, "")   // footnote markers [a] [b]
-    .replace(/\(\d+\)/g, "")     // cross-ref markers (1) (2)
+    .replace(/\[[a-z]\]/gi, "")   // footnote markers [a] [b]
+    .replace(/\(\d+\)/g, "")      // cross-ref markers (1) (2)
+    .replace(/\\[a-z][a-z0-9]*/gi, "")  // inline USFM markers \nd \add \wj etc.
     .replace(/\s{2,}/g, " ")
     .trim();
 }

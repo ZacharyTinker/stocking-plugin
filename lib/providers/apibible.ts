@@ -61,9 +61,10 @@ async function fetchChunk(
 ): Promise<Verse[]> {
   const bookUsfm = usfmId(ref.book);
 
-  // Chapter-level passage IDs (no verse suffix) let api.bible return the full
-  // chapter range without risking rejection from a non-existent ".999" verse.
-  const passageId = `${bookUsfm}.${ref.startChapter}-${bookUsfm}.${ref.endChapter}`;
+  // Use explicit verse bounds: .1 start, .200 end (no chapter has more than ~176 verses).
+  // Pure chapter-level IDs (LUK.6-LUK.10) may truncate the last few verses of the final
+  // chapter in a range; .1-.200 ensures we get everything up to the last verse.
+  const passageId = `${bookUsfm}.${ref.startChapter}.1-${bookUsfm}.${ref.endChapter}.200`;
 
   const url = `${BASE}/bibles/${bibleId}/passages/${passageId}?${new URLSearchParams({
     "content-type": "text",
