@@ -84,6 +84,9 @@ async function fetchChunk(
 
   const data = await res.json() as { data?: { content?: string } };
   const text = data.data?.content ?? "";
+  if (!text.trim()) {
+    throw new Error(`api.bible returned no text for ${ref.book} ${ref.startChapter}–${ref.endChapter}. Check the passage reference and Bible ID.`);
+  }
   return parseVerseText(text, ref.book, ref.startChapter);
 }
 
