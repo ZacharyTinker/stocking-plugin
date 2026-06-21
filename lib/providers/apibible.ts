@@ -22,7 +22,7 @@ const BASE = "https://api.scripture.api.bible/v1";
 // 5 chapters per chunk. Narrative NT books average ~50 verses/chapter (Luke ch1-10
 // = 512 verses), so 10 chapters blows past the 500-verse limit. 5 is safe for all
 // book types including Psalms (176 verses in ch 119 alone).
-const CHUNK_SIZE = 5;
+const CHUNK_SIZE = 4;
 
 export async function fetchApiBiblePassage(
   ref: PassageRef,

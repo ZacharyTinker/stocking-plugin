@@ -15,7 +15,7 @@ const BASE = "https://api.esv.org/v3/passage/text/";
 
 // 5 chapters per chunk ≈ 125 verses for typical NT chapters.
 // Conservative enough to handle long chapters (Psalms 119 = 176 verses alone).
-const CHUNK_SIZE = 5;
+const CHUNK_SIZE = 4;
 
 export async function fetchESVPassage(ref: PassageRef, apiKey: string): Promise<Verse[]> {
   const totalChapters = ref.endChapter - ref.startChapter + 1;
