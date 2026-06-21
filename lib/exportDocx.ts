@@ -5,7 +5,7 @@ import {
   TextRun,
   HeadingLevel,
 } from "docx";
-import { Verse, MarkedSegment, TokenizationOptions, MarkupStyle, DisplayOptions } from "@/types/scripture";
+import { Verse, MarkedSegment, TokenizationOptions, MarkupStyle, ElementStyle, DisplayOptions } from "@/types/scripture";
 import { markupVerse } from "./markup";
 
 function hexToShading(hex: string): string {
@@ -18,10 +18,19 @@ function segmentsToRuns(
   segments: MarkedSegment[],
   wordStyle: MarkupStyle,
   phraseStyle: MarkupStyle,
-  baseSizePt: number
+  baseSizePt: number,
+  verseNumberStyle: ElementStyle
 ): TextRun[] {
+  const vnHalfPts = Math.round(verseNumberStyle.fontSize * 0.75) * 2;
   const runs: TextRun[] = [
-    new TextRun({ text: `${verseNumber}`, bold: false, superScript: true, size: 16, color: "888888" }),
+    new TextRun({
+      text: `${verseNumber}`,
+      superScript: true,
+      size: vnHalfPts,
+      bold: verseNumberStyle.bold,
+      italics: verseNumberStyle.italic,
+      color: verseNumberStyle.color ? verseNumberStyle.color.replace("#", "") : "888888",
+    }),
     new TextRun({ text: " " }),
   ];
   for (const seg of segments) {
@@ -58,6 +67,20 @@ function segmentsToRuns(
   return runs;
 }
 
+function elementStyleToRun(text: string, s: ElementStyle): TextRun {
+  // DOCX sizes in half-points; fontSize is px ≈ 0.75pt
+  const halfPts = Math.round(s.fontSize * 0.75) * 2;
+  return new TextRun({
+    text,
+    bold: s.bold,
+    italics: s.italic,
+    underline: s.underline ? {} : undefined,
+    color: s.color ? s.color.replace("#", "") : undefined,
+    shading: s.highlight ? { fill: hexToShading(s.highlight) } : undefined,
+    size: halfPts,
+  });
+}
+
 export async function exportToDocx(
   verses: Verse[],
   uniqueWords: Set<string>,
@@ -67,7 +90,13 @@ export async function exportToDocx(
   includeUniquePhrases: boolean,
   displayOpts: DisplayOptions
 ): Promise<Blob> {
-  const { includeSectionHeadings, wordStyle, phraseStyle, fontSize } = displayOpts;
+  const {
+    includeSectionHeadings,
+    wordStyle, phraseStyle, fontSize,
+    bookTitleStyle, chapterHeadingStyle, sectionHeadingStyle, verseNumberStyle,
+    chapterPageBreak,
+  } = displayOpts;
+
   const paragraphs: Paragraph[] = [];
 
   let currentBook = "";
@@ -79,8 +108,7 @@ export async function exportToDocx(
       currentBook = verse.book;
       paragraphs.push(
         new Paragraph({
-          text: verse.book,
-          heading: HeadingLevel.HEADING_1,
+          children: [elementStyleToRun(verse.book, bookTitleStyle)],
           spacing: { before: 400, after: 200 },
         })
       );
@@ -90,9 +118,9 @@ export async function exportToDocx(
       currentChapter = verse.chapter;
       paragraphs.push(
         new Paragraph({
-          text: `Chapter ${verse.chapter}`,
-          heading: HeadingLevel.HEADING_2,
-          spacing: { before: 300, after: 120 },
+          children: [elementStyleToRun(`Chapter ${verse.chapter}`, chapterHeadingStyle)],
+          spacing: { before: chapterPageBreak ? 0 : 300, after: 120 },
+          pageBreakBefore: chapterPageBreak,
         })
       );
     }
@@ -101,8 +129,7 @@ export async function exportToDocx(
       lastHeading = verse.sectionHeading;
       paragraphs.push(
         new Paragraph({
-          text: verse.sectionHeading,
-          heading: HeadingLevel.HEADING_3,
+          children: [elementStyleToRun(verse.sectionHeading, sectionHeadingStyle)],
           spacing: { before: 200, after: 80 },
         })
       );
@@ -119,38 +146,13 @@ export async function exportToDocx(
 
     paragraphs.push(
       new Paragraph({
-        children: segmentsToRuns(verse.verse, segments, wordStyle, phraseStyle, fontSize),
+        children: segmentsToRuns(verse.verse, segments, wordStyle, phraseStyle, fontSize, verseNumberStyle),
         spacing: { after: 60 },
       })
     );
   }
 
   const doc = new Document({
-    styles: {
-      paragraphStyles: [
-        {
-          id: "Heading1",
-          name: "Heading 1",
-          basedOn: "Normal",
-          next: "Normal",
-          run: { bold: true, size: 32 },
-        },
-        {
-          id: "Heading2",
-          name: "Heading 2",
-          basedOn: "Normal",
-          next: "Normal",
-          run: { bold: true, size: 26 },
-        },
-        {
-          id: "Heading3",
-          name: "Heading 3",
-          basedOn: "Normal",
-          next: "Normal",
-          run: { bold: true, italics: true, size: 22 },
-        },
-      ],
-    },
     sections: [{ children: paragraphs }],
   });
 

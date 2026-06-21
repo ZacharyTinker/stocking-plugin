@@ -32,9 +32,11 @@ export default function ExportButtons({ result, tokenOpts, displayOpts }: Props)
   }
 
   function handleHTML() {
-    const { wordStyle, phraseStyle, fontSize } = displayOpts;
+    const { wordStyle, phraseStyle, fontSize,
+            bookTitleStyle, chapterHeadingStyle, sectionHeadingStyle, verseNumberStyle,
+            chapterPageBreak } = displayOpts;
 
-    function styleAttr(s: typeof wordStyle): string {
+    function markupAttr(s: typeof wordStyle): string {
       const parts: string[] = [];
       if (s.bold) parts.push("font-weight:bold");
       if (s.italic) parts.push("font-style:italic");
@@ -45,10 +47,21 @@ export default function ExportButtons({ result, tokenOpts, displayOpts }: Props)
       return parts.join(";");
     }
 
+    function elementAttr(s: typeof bookTitleStyle): string {
+      const parts: string[] = [];
+      parts.push(`font-size:${s.fontSize}px`);
+      parts.push(`font-weight:${s.bold ? "bold" : "normal"}`);
+      parts.push(`font-style:${s.italic ? "italic" : "normal"}`);
+      if (s.underline) parts.push("text-decoration:underline");
+      if (s.highlight) parts.push(`background-color:${s.highlight}`);
+      if (s.color) parts.push(`color:${s.color}`);
+      return parts.join(";");
+    }
+
     function segStyle(seg: { isUniqueWord: boolean; isUniquePhrase: boolean }): string {
       const parts: string[] = [];
-      if (seg.isUniquePhrase) parts.push(styleAttr(phraseStyle));
-      if (seg.isUniqueWord) parts.push(styleAttr(wordStyle));
+      if (seg.isUniquePhrase) parts.push(markupAttr(phraseStyle));
+      if (seg.isUniqueWord) parts.push(markupAttr(wordStyle));
       return parts.filter(Boolean).join(";");
     }
 
@@ -61,10 +74,10 @@ export default function ExportButtons({ result, tokenOpts, displayOpts }: Props)
 <title>${book} - Bible Quizzing Markup</title>
 <style>
   body { font-family: ${displayOpts.fontFamily}; font-size: ${fontSize}px; line-height: ${displayOpts.lineSpacing}; max-width: 800px; margin: 0 auto; padding: 2rem; }
-  h1.book-title { font-size: 2em; margin-top: 2rem; }
-  h2.chapter-heading { font-size: 1.5em; margin-top: 1.5rem; }
-  h3.section-heading { font-size: 1.1em; font-style: italic; margin-top: 1rem; color: #555; }
-  .verse-number { font-size: 0.75em; color: #888; margin-right: 0.25em; vertical-align: super; }
+  h1.book-title { margin-top: 2rem; ${elementAttr(bookTitleStyle)} }
+  h2.chapter-heading { margin-top: 1.5rem; ${elementAttr(chapterHeadingStyle)}${chapterPageBreak ? " page-break-before:always;" : ""} }
+  h3.section-heading { margin-top: 1rem; ${elementAttr(sectionHeadingStyle)} }
+  .verse-number { ${elementAttr(verseNumberStyle)} margin-right: 0.25em; vertical-align: super; }
   .verse-line { margin: 0.2em 0; }
 </style>
 </head>

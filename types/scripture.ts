@@ -28,6 +28,17 @@ export interface MarkupStyle {
   sizeBoost: number;
 }
 
+/** Style for structural elements (headings, verse numbers) — uses absolute font size */
+export interface ElementStyle {
+  bold: boolean;
+  italic: boolean;
+  underline: boolean;
+  highlight: string;
+  color: string;
+  /** Absolute font size in px */
+  fontSize: number;
+}
+
 export interface DisplayOptions {
   fontFamily: string;
   fontSize: number;
@@ -36,6 +47,12 @@ export interface DisplayOptions {
   includeFootnotes: boolean;
   wordStyle: MarkupStyle;
   phraseStyle: MarkupStyle;
+  bookTitleStyle: ElementStyle;
+  chapterHeadingStyle: ElementStyle;
+  sectionHeadingStyle: ElementStyle;
+  verseNumberStyle: ElementStyle;
+  /** Insert a page break before each chapter heading in exports */
+  chapterPageBreak: boolean;
 }
 
 export interface AnalysisResult {

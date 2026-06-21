@@ -7,7 +7,7 @@ import Preview from "@/components/Preview";
 import SettingsPanel from "@/components/SettingsPanel";
 import ExportButtons from "@/components/ExportButtons";
 import WordList from "@/components/WordList";
-import { Verse, TokenizationOptions, DisplayOptions, AnalysisResult } from "@/types/scripture";
+import { Verse, TokenizationOptions, DisplayOptions, AnalysisResult, ElementStyle } from "@/types/scripture";
 import { analyzeVerses } from "@/lib/analyze";
 
 const DEFAULT_TOKEN_OPTS: TokenizationOptions = {
@@ -20,6 +20,8 @@ const DEFAULT_TOKEN_OPTS: TokenizationOptions = {
   includeUniquePhrases: false,
 };
 
+const DEFAULT_ELEMENT: ElementStyle = { bold: false, italic: false, underline: false, highlight: "", color: "", fontSize: 16 };
+
 const DEFAULT_DISPLAY_OPTS: DisplayOptions = {
   fontFamily: "Georgia, serif",
   fontSize: 16,
@@ -28,6 +30,11 @@ const DEFAULT_DISPLAY_OPTS: DisplayOptions = {
   includeFootnotes: false,
   wordStyle: { bold: true, italic: false, underline: false, highlight: "", color: "", sizeBoost: 0 },
   phraseStyle: { bold: false, italic: false, underline: true, highlight: "", color: "", sizeBoost: 0 },
+  bookTitleStyle:      { ...DEFAULT_ELEMENT, bold: true, fontSize: 26 },
+  chapterHeadingStyle: { ...DEFAULT_ELEMENT, bold: true, fontSize: 20 },
+  sectionHeadingStyle: { ...DEFAULT_ELEMENT, bold: true, italic: true, fontSize: 14 },
+  verseNumberStyle:    { ...DEFAULT_ELEMENT, color: "#888888", fontSize: 10 },
+  chapterPageBreak: false,
 };
 
 type Tab = "input" | "preview";

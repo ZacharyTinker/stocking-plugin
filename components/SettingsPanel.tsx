@@ -1,6 +1,6 @@
 "use client";
 
-import { TokenizationOptions, DisplayOptions, MarkupStyle } from "@/types/scripture";
+import { TokenizationOptions, DisplayOptions, MarkupStyle, ElementStyle } from "@/types/scripture";
 
 interface Props {
   tokenOpts: TokenizationOptions;
@@ -109,6 +109,39 @@ export default function SettingsPanel({ tokenOpts, displayOpts, onTokenChange, o
       </section>
 
       <section>
+        <h3 className="font-semibold text-gray-700 mb-2">Headings &amp; Elements</h3>
+        <div className="space-y-1 mb-3">
+          <Checkbox
+            label="Page break before each chapter (export only)"
+            checked={displayOpts.chapterPageBreak}
+            onChange={(v) => onDisplayChange({ ...displayOpts, chapterPageBreak: v })}
+          />
+        </div>
+        <ElementStylePicker
+          label="Book title"
+          value={displayOpts.bookTitleStyle}
+          onChange={(s) => onDisplayChange({ ...displayOpts, bookTitleStyle: s })}
+        />
+        <ElementStylePicker
+          label="Chapter heading"
+          value={displayOpts.chapterHeadingStyle}
+          onChange={(s) => onDisplayChange({ ...displayOpts, chapterHeadingStyle: s })}
+        />
+        {displayOpts.includeSectionHeadings && (
+          <ElementStylePicker
+            label="Section heading"
+            value={displayOpts.sectionHeadingStyle}
+            onChange={(s) => onDisplayChange({ ...displayOpts, sectionHeadingStyle: s })}
+          />
+        )}
+        <ElementStylePicker
+          label="Verse number"
+          value={displayOpts.verseNumberStyle}
+          onChange={(s) => onDisplayChange({ ...displayOpts, verseNumberStyle: s })}
+        />
+      </section>
+
+      <section>
         <h3 className="font-semibold text-gray-700 mb-2">Tokenization</h3>
         <div className="space-y-1">
           <Checkbox label="Hyphenated words as single word" checked={tokenOpts.hyphenatedWordsAsSingle} onChange={() => toggle("hyphenatedWordsAsSingle")} />
@@ -131,6 +164,91 @@ function Checkbox({ label, checked, onChange }: { label: string; checked: boolea
 
 const HIGHLIGHT_PRESETS = ["", "#ffff00", "#90ee90", "#add8e6", "#ffb6c1", "#ffa500", "#e0b0ff"];
 const COLOR_PRESETS = ["", "#000000", "#cc0000", "#006600", "#00008b", "#8b4513", "#555555"];
+
+function ElementStylePicker({
+  label,
+  value,
+  onChange,
+}: {
+  label: string;
+  value: ElementStyle;
+  onChange: (s: ElementStyle) => void;
+}) {
+  function patch(p: Partial<ElementStyle>) {
+    onChange({ ...value, ...p });
+  }
+
+  const previewStyle: React.CSSProperties = {
+    fontWeight: value.bold ? "bold" : "normal",
+    fontStyle: value.italic ? "italic" : "normal",
+    textDecoration: value.underline ? "underline" : undefined,
+    backgroundColor: value.highlight || undefined,
+    color: value.color || undefined,
+    fontSize: `${value.fontSize}px`,
+  };
+
+  return (
+    <div className="mt-2 mb-2 border rounded-lg p-3 bg-gray-50 space-y-2">
+      <div className="flex items-center justify-between">
+        <span className="font-medium text-gray-700 text-xs uppercase tracking-wide">{label}</span>
+        <span style={previewStyle} className="border px-2 py-0.5 rounded bg-white">
+          Sample
+        </span>
+      </div>
+
+      <div className="flex gap-3 flex-wrap text-sm">
+        {(["bold", "italic", "underline"] as const).map((prop) => (
+          <label key={prop} className="flex items-center gap-1 cursor-pointer capitalize">
+            <input type="checkbox" checked={value[prop]} onChange={(e) => patch({ [prop]: e.target.checked })} />
+            {prop}
+          </label>
+        ))}
+        <label className="flex items-center gap-1 cursor-pointer">
+          <input
+            type="number"
+            min={8}
+            max={72}
+            step={1}
+            value={value.fontSize}
+            onChange={(e) => patch({ fontSize: Number(e.target.value) })}
+            className="w-14 border rounded px-1 py-0.5 text-xs"
+          />
+          <span className="text-xs text-gray-600">px size</span>
+        </label>
+      </div>
+
+      <div className="space-y-1">
+        <span className="text-xs text-gray-500">Highlight</span>
+        <div className="flex gap-1 flex-wrap">
+          {HIGHLIGHT_PRESETS.map((c) => (
+            <button key={c || "none"} onClick={() => patch({ highlight: c })} title={c || "None"}
+              className={`w-6 h-6 rounded border-2 ${value.highlight === c ? "border-blue-500" : "border-gray-300"}`}
+              style={{ backgroundColor: c || "transparent" }}>
+              {!c && <span className="text-gray-400 text-xs leading-none">✕</span>}
+            </button>
+          ))}
+          <input type="color" value={value.highlight || "#ffffff"} onChange={(e) => patch({ highlight: e.target.value })}
+            title="Custom highlight" className="w-6 h-6 rounded border border-gray-300 cursor-pointer p-0" />
+        </div>
+      </div>
+
+      <div className="space-y-1">
+        <span className="text-xs text-gray-500">Text color</span>
+        <div className="flex gap-1 flex-wrap">
+          {COLOR_PRESETS.map((c) => (
+            <button key={c || "none"} onClick={() => patch({ color: c })} title={c || "Default"}
+              className={`w-6 h-6 rounded border-2 ${value.color === c ? "border-blue-500" : "border-gray-300"}`}
+              style={{ backgroundColor: c || "transparent" }}>
+              {!c && <span className="text-gray-400 text-xs leading-none">✕</span>}
+            </button>
+          ))}
+          <input type="color" value={value.color || "#000000"} onChange={(e) => patch({ color: e.target.value })}
+            title="Custom text color" className="w-6 h-6 rounded border border-gray-300 cursor-pointer p-0" />
+        </div>
+      </div>
+    </div>
+  );
+}
 
 function StylePicker({
   label,
