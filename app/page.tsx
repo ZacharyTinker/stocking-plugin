@@ -8,7 +8,8 @@ import SettingsPanel from "@/components/SettingsPanel";
 import ExportButtons from "@/components/ExportButtons";
 import WordList from "@/components/WordList";
 import WordFrequency from "@/components/WordFrequency";
-import { Verse, TokenizationOptions, DisplayOptions, AnalysisResult, ElementStyle } from "@/types/scripture";
+import KeyVerseUpload from "@/components/KeyVerseUpload";
+import { Verse, TokenizationOptions, DisplayOptions, AnalysisResult, ElementStyle, ClubStyle } from "@/types/scripture";
 import { analyzeVerses } from "@/lib/analyze";
 
 const DEFAULT_TOKEN_OPTS: TokenizationOptions = {
@@ -45,6 +46,8 @@ export default function Home() {
   const [verses, setVerses] = useState<Verse[]>([]);
   const [tokenOpts, setTokenOpts] = useState<TokenizationOptions>(DEFAULT_TOKEN_OPTS);
   const [displayOpts, setDisplayOpts] = useState<DisplayOptions>(DEFAULT_DISPLAY_OPTS);
+  const [keyVerses, setKeyVerses] = useState<Map<string, string>>(new Map());
+  const [clubStyles, setClubStyles] = useState<Record<string, ClubStyle>>({});
   const [tab, setTab] = useState<Tab>("input");
   const [inputMode, setInputMode] = useState<InputMode>("api");
   const [settingsOpen, setSettingsOpen] = useState(false);
@@ -88,6 +91,9 @@ export default function Home() {
               displayOpts={displayOpts}
               onTokenChange={setTokenOpts}
               onDisplayChange={setDisplayOpts}
+              clubStyles={clubStyles}
+              keyVerses={keyVerses}
+              onClubStylesChange={setClubStyles}
             />
           </div>
         )}
@@ -117,7 +123,7 @@ export default function Home() {
           <div className="bg-white border rounded-lg p-5 shadow-sm space-y-5">
             {/* Input mode toggle */}
             <div className="flex gap-1 border rounded-lg p-1 w-fit bg-gray-100">
-              {([["api", "Fetch from ESV API"], ["manual", "Paste / Upload"]] as [InputMode, string][]).map(([mode, label]) => (
+              {([["api", "Fetch from API"], ["manual", "Paste / Upload"]] as [InputMode, string][]).map(([mode, label]) => (
                 <button
                   key={mode}
                   onClick={() => setInputMode(mode)}
@@ -141,6 +147,20 @@ export default function Home() {
                 <ScriptureInput onParsed={handleParsed} />
               </>
             )}
+
+            {/* Key Verse upload — available regardless of input mode */}
+            <div className="border-t pt-4">
+              <h2 className="font-semibold text-gray-800 mb-2">Key Verses</h2>
+              <p className="text-xs text-gray-500 mb-3">
+                Upload a list of key verses (Club 75 / 150 / 300 or custom clubs) to show circle indicators next to verse numbers.
+              </p>
+              <KeyVerseUpload
+                keyVerses={keyVerses}
+                clubStyles={clubStyles}
+                onLoad={({ keyVerses: kv, clubStyles: cs }) => { setKeyVerses(kv); setClubStyles(cs); }}
+                onClear={() => { setKeyVerses(new Map()); setClubStyles({}); }}
+              />
+            </div>
           </div>
         )}
 
@@ -155,13 +175,14 @@ export default function Home() {
                 <div className="flex items-center justify-between flex-wrap gap-3 no-print">
                   <div className="text-sm text-gray-600">
                     <strong>{verses.length}</strong> verses &bull;{" "}
-                    <strong>{result.uniqueWords.size}</strong> unique words across all {verses.length} verses
+                    <strong>{result.uniqueWords.size}</strong> unique words
+                    {keyVerses.size > 0 && <> &bull; <strong>{keyVerses.size}</strong> key verses</>}
                   </div>
-                  <ExportButtons result={result} tokenOpts={tokenOpts} displayOpts={displayOpts} />
+                  <ExportButtons result={result} tokenOpts={tokenOpts} displayOpts={displayOpts} keyVerses={keyVerses} clubStyles={clubStyles} />
                 </div>
                 <div className="no-print"><WordList result={result} /></div>
                 <div className="no-print"><WordFrequency result={result} /></div>
-                <Preview result={result} tokenOpts={tokenOpts} displayOpts={displayOpts} />
+                <Preview result={result} tokenOpts={tokenOpts} displayOpts={displayOpts} keyVerses={keyVerses} clubStyles={clubStyles} />
               </>
             )}
           </div>

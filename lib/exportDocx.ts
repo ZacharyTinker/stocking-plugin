@@ -5,12 +5,27 @@ import {
   TextRun,
   HeadingLevel,
 } from "docx";
-import { Verse, MarkedSegment, TokenizationOptions, MarkupStyle, ElementStyle, DisplayOptions } from "@/types/scripture";
+import { Verse, MarkedSegment, TokenizationOptions, MarkupStyle, ElementStyle, DisplayOptions, ClubStyle } from "@/types/scripture";
 import { markupVerse } from "./markup";
 
 function hexToShading(hex: string): string {
   // DOCX shading colors are 6-char hex without '#'
   return hex.replace("#", "").toUpperCase();
+}
+
+function clubIndicatorRun(verseNumber: number, clubStyle: ClubStyle, vnHalfPts: number): TextRun[] {
+  // Use Unicode circle chars as the indicator before the verse number
+  const char =
+    clubStyle.indicator === "filled"  ? "●" :
+    clubStyle.indicator === "outline" ? "○" :
+    clubStyle.indicator === "dot"     ? "•" : "";
+  if (!char) return [];
+  const color = clubStyle.color.replace("#", "") || "888888";
+  return [
+    new TextRun({ text: char, superScript: true, size: vnHalfPts, color, bold: false }),
+    new TextRun({ text: `${verseNumber}`, superScript: true, size: vnHalfPts, color: "888888", bold: false }),
+    new TextRun({ text: " " }),
+  ];
 }
 
 function segmentsToRuns(
@@ -19,20 +34,26 @@ function segmentsToRuns(
   wordStyle: MarkupStyle,
   phraseStyle: MarkupStyle,
   baseSizePt: number,
-  verseNumberStyle: ElementStyle
+  verseNumberStyle: ElementStyle,
+  clubStyle?: ClubStyle
 ): TextRun[] {
   const vnHalfPts = Math.round(verseNumberStyle.fontSize * 0.75) * 2;
-  const runs: TextRun[] = [
-    new TextRun({
-      text: `${verseNumber}`,
-      superScript: true,
-      size: vnHalfPts,
-      bold: verseNumberStyle.bold,
-      italics: verseNumberStyle.italic,
-      color: verseNumberStyle.color ? verseNumberStyle.color.replace("#", "") : "888888",
-    }),
-    new TextRun({ text: " " }),
-  ];
+
+  const verseNumRuns: TextRun[] = clubStyle && clubStyle.indicator !== "none"
+    ? clubIndicatorRun(verseNumber, clubStyle, vnHalfPts)
+    : [
+        new TextRun({
+          text: `${verseNumber}`,
+          superScript: true,
+          size: vnHalfPts,
+          bold: verseNumberStyle.bold,
+          italics: verseNumberStyle.italic,
+          color: verseNumberStyle.color ? verseNumberStyle.color.replace("#", "") : "888888",
+        }),
+        new TextRun({ text: " " }),
+      ];
+
+  const runs: TextRun[] = [...verseNumRuns];
   for (const seg of segments) {
     // Merge styles: phrase first, word on top (word wins for conflicting props)
     const s: MarkupStyle = seg.isUniqueWord
@@ -88,7 +109,9 @@ export async function exportToDocx(
   opts: TokenizationOptions,
   includeUniqueWords: boolean,
   includeUniquePhrases: boolean,
-  displayOpts: DisplayOptions
+  displayOpts: DisplayOptions,
+  keyVerses?: Map<string, string>,
+  clubStyles?: Record<string, ClubStyle>
 ): Promise<Blob> {
   const {
     includeSectionHeadings,
@@ -144,9 +167,13 @@ export async function exportToDocx(
       includeUniquePhrases
     );
 
+    const verseId = `${verse.book} ${verse.chapter}:${verse.verse}`;
+    const club = keyVerses?.get(verseId);
+    const clubStyle = club ? clubStyles?.[club] : undefined;
+
     paragraphs.push(
       new Paragraph({
-        children: segmentsToRuns(verse.verse, segments, wordStyle, phraseStyle, fontSize, verseNumberStyle),
+        children: segmentsToRuns(verse.verse, segments, wordStyle, phraseStyle, fontSize, verseNumberStyle, clubStyle),
         spacing: { after: 60 },
       })
     );

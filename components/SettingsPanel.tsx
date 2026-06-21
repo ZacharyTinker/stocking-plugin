@@ -1,12 +1,16 @@
 "use client";
 
-import { TokenizationOptions, DisplayOptions, MarkupStyle, ElementStyle } from "@/types/scripture";
+import { TokenizationOptions, DisplayOptions, MarkupStyle, ElementStyle, ClubStyle } from "@/types/scripture";
+import ClubStylePicker from "@/components/ClubStylePicker";
 
 interface Props {
   tokenOpts: TokenizationOptions;
   displayOpts: DisplayOptions;
   onTokenChange: (opts: TokenizationOptions) => void;
   onDisplayChange: (opts: DisplayOptions) => void;
+  clubStyles: Record<string, ClubStyle>;
+  keyVerses: Map<string, string>;
+  onClubStylesChange: (s: Record<string, ClubStyle>) => void;
 }
 
 const FONTS = [
@@ -19,7 +23,7 @@ const FONTS = [
   "Atkinson Hyperlegible, sans-serif",
 ];
 
-export default function SettingsPanel({ tokenOpts, displayOpts, onTokenChange, onDisplayChange }: Props) {
+export default function SettingsPanel({ tokenOpts, displayOpts, onTokenChange, onDisplayChange, clubStyles, keyVerses, onClubStylesChange }: Props) {
   function toggle(key: keyof TokenizationOptions) {
     onTokenChange({ ...tokenOpts, [key]: !tokenOpts[key] });
   }
@@ -140,6 +144,26 @@ export default function SettingsPanel({ tokenOpts, displayOpts, onTokenChange, o
           onChange={(s) => onDisplayChange({ ...displayOpts, verseNumberStyle: s })}
         />
       </section>
+
+      {Object.keys(clubStyles).length > 0 && (
+        <section>
+          <h3 className="font-semibold text-gray-700 mb-2">Key Verse Indicators</h3>
+          {Object.entries(clubStyles)
+            .sort(([a], [b]) => a.localeCompare(b))
+            .map(([club, style]) => {
+              const count = [...keyVerses.values()].filter((v) => v === club).length;
+              return (
+                <ClubStylePicker
+                  key={club}
+                  club={club}
+                  style={style}
+                  count={count}
+                  onChange={(s) => onClubStylesChange({ ...clubStyles, [club]: s })}
+                />
+              );
+            })}
+        </section>
+      )}
 
       <section>
         <h3 className="font-semibold text-gray-700 mb-2">Tokenization</h3>

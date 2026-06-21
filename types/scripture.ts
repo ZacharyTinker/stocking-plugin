@@ -63,6 +63,23 @@ export interface AnalysisResult {
   wordFrequency: Map<string, number>;
 }
 
+/** Visual indicator style for a Key Verse club level */
+export interface ClubStyle {
+  /** "filled" = solid circle, "outline" = ring only, "dot" = small bullet, "none" = hidden */
+  indicator: "filled" | "outline" | "dot" | "none";
+  color: string;
+}
+
+export const DEFAULT_CLUB_STYLES: Record<string, ClubStyle> = {
+  "Club 75":  { indicator: "dot",     color: "#94a3b8" },
+  "Club 150": { indicator: "filled",  color: "#2563eb" },
+  "Club 300": { indicator: "outline", color: "#2563eb" },
+};
+
+export const CLUB_COLOR_PALETTE = [
+  "#2563eb", "#16a34a", "#dc2626", "#d97706", "#7c3aed", "#0891b2",
+];
+
 export type TokenKind = 'word' | 'phrase2' | 'phrase3';
 
 export interface MarkedToken {

@@ -1,15 +1,18 @@
 "use client";
 
-import { AnalysisResult, TokenizationOptions, DisplayOptions } from "@/types/scripture";
+import { AnalysisResult, TokenizationOptions, DisplayOptions, ClubStyle } from "@/types/scripture";
 import { markupVerse } from "@/lib/markup";
+import { indicatorChar } from "@/components/ClubStylePicker";
 
 interface Props {
   result: AnalysisResult;
   tokenOpts: TokenizationOptions;
   displayOpts: DisplayOptions;
+  keyVerses?: Map<string, string>;
+  clubStyles?: Record<string, ClubStyle>;
 }
 
-export default function ExportButtons({ result, tokenOpts, displayOpts }: Props) {
+export default function ExportButtons({ result, tokenOpts, displayOpts, keyVerses, clubStyles }: Props) {
   const { verses, uniqueWords, uniquePhrases } = result;
 
   async function handleDocx() {
@@ -21,7 +24,9 @@ export default function ExportButtons({ result, tokenOpts, displayOpts }: Props)
       tokenOpts,
       tokenOpts.includeUniqueWords,
       tokenOpts.includeUniquePhrases,
-      displayOpts
+      displayOpts,
+      keyVerses,
+      clubStyles
     );
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
@@ -102,7 +107,22 @@ export default function ExportButtons({ result, tokenOpts, displayOpts }: Props)
       }
 
       const segments = markupVerse(verse.text, uniqueWords, uniquePhrases, tokenOpts, tokenOpts.includeUniqueWords, tokenOpts.includeUniquePhrases);
-      html += `<p class="verse-line"><sup class="verse-number">${verse.verse}</sup>`;
+      const verseId = `${verse.book} ${verse.chapter}:${verse.verse}`;
+      const club = keyVerses?.get(verseId);
+      const cs = club ? clubStyles?.[club] : undefined;
+
+      let verseNumHtml: string;
+      if (cs && cs.indicator !== "none") {
+        if (cs.indicator === "dot") {
+          verseNumHtml = `<span style="color:${cs.color};font-size:0.55em;vertical-align:super;margin-right:0.1em">•</span><sup class="verse-number">${verse.verse}</sup>`;
+        } else {
+          const bg = cs.indicator === "filled" ? `background:${cs.color};color:white` : `border:1.5px solid ${cs.color};color:#555`;
+          verseNumHtml = `<span style="display:inline-flex;align-items:center;justify-content:center;min-width:1.6em;height:1.6em;border-radius:50%;${bg};font-size:${verseNumberStyle.fontSize}px;vertical-align:super;line-height:1;margin-right:0.2em">${verse.verse}</span>`;
+        }
+      } else {
+        verseNumHtml = `<sup class="verse-number">${verse.verse}</sup>`;
+      }
+      html += `<p class="verse-line">${verseNumHtml}`;
       for (const seg of segments) {
         const inlineStyle = segStyle(seg);
         if (inlineStyle) {

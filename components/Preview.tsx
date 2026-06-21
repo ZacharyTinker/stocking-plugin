@@ -1,7 +1,8 @@
 "use client";
 
-import { Verse, TokenizationOptions, DisplayOptions, AnalysisResult, MarkupStyle, ElementStyle } from "@/types/scripture";
+import { Verse, TokenizationOptions, DisplayOptions, AnalysisResult, MarkupStyle, ElementStyle, ClubStyle } from "@/types/scripture";
 import { markupVerse } from "@/lib/markup";
+import { IndicatorDemo } from "@/components/ClubStylePicker";
 
 function markupStyleToCSS(s: MarkupStyle, baseFontSize: number): React.CSSProperties {
   return {
@@ -29,9 +30,11 @@ interface Props {
   result: AnalysisResult;
   tokenOpts: TokenizationOptions;
   displayOpts: DisplayOptions;
+  keyVerses?: Map<string, string>;
+  clubStyles?: Record<string, ClubStyle>;
 }
 
-export default function Preview({ result, tokenOpts, displayOpts }: Props) {
+export default function Preview({ result, tokenOpts, displayOpts, keyVerses, clubStyles }: Props) {
   const { verses, uniqueWords, uniquePhrases } = result;
 
   let currentBook = "";
@@ -75,36 +78,34 @@ export default function Preview({ result, tokenOpts, displayOpts }: Props) {
     }
 
     const segments = markupVerse(
-      verse.text,
-      uniqueWords,
-      uniquePhrases,
-      tokenOpts,
-      tokenOpts.includeUniqueWords,
-      tokenOpts.includeUniquePhrases
+      verse.text, uniqueWords, uniquePhrases, tokenOpts,
+      tokenOpts.includeUniqueWords, tokenOpts.includeUniquePhrases
     );
+
+    const verseId = `${verse.book} ${verse.chapter}:${verse.verse}`;
+    const club = keyVerses?.get(verseId);
+    const clubStyle = club ? clubStyles?.[club] : undefined;
 
     elements.push(
       <p key={`v-${verse.book}-${verse.chapter}-${verse.verse}`} className="verse-line my-0.5">
-        <sup
-          className="verse-number select-none"
-          style={{ ...elementStyleToCSS(verseNumberStyle), marginRight: "0.2em", verticalAlign: "super" }}
-        >
-          {verse.verse}
-        </sup>
+        {/* Verse number: plain or with club indicator */}
+        {clubStyle && clubStyle.indicator !== "none" ? (
+          <span className="select-none" style={{ marginRight: "0.25em" }}>
+            <IndicatorDemo verseNum={verse.verse} clubStyle={clubStyle} />
+          </span>
+        ) : (
+          <sup
+            className="verse-number select-none"
+            style={{ ...elementStyleToCSS(verseNumberStyle), marginRight: "0.2em", verticalAlign: "super" }}
+          >
+            {verse.verse}
+          </sup>
+        )}
         {segments.map((seg, i) => {
           let style: React.CSSProperties = {};
-          if (seg.isUniquePhrase) {
-            style = { ...style, ...markupStyleToCSS(displayOpts.phraseStyle, displayOpts.fontSize) };
-          }
-          if (seg.isUniqueWord) {
-            style = { ...style, ...markupStyleToCSS(displayOpts.wordStyle, displayOpts.fontSize) };
-          }
-          const cls = [
-            seg.isUniqueWord ? "unique-word" : "",
-            seg.isUniquePhrase ? "unique-phrase" : "",
-          ]
-            .filter(Boolean)
-            .join(" ");
+          if (seg.isUniquePhrase) style = { ...style, ...markupStyleToCSS(displayOpts.phraseStyle, displayOpts.fontSize) };
+          if (seg.isUniqueWord)   style = { ...style, ...markupStyleToCSS(displayOpts.wordStyle, displayOpts.fontSize) };
+          const cls = [seg.isUniqueWord ? "unique-word" : "", seg.isUniquePhrase ? "unique-phrase" : ""].filter(Boolean).join(" ");
           return (
             <span key={i} className={cls || undefined} style={Object.keys(style).length ? style : undefined}>
               {seg.text}{" "}
@@ -118,11 +119,7 @@ export default function Preview({ result, tokenOpts, displayOpts }: Props) {
   return (
     <div
       className="p-6 bg-white border rounded shadow-sm min-h-[400px] preview-area"
-      style={{
-        fontFamily: displayOpts.fontFamily,
-        fontSize: displayOpts.fontSize,
-        lineHeight: displayOpts.lineSpacing,
-      }}
+      style={{ fontFamily: displayOpts.fontFamily, fontSize: displayOpts.fontSize, lineHeight: displayOpts.lineSpacing }}
     >
       {elements.length === 0 ? (
         <p className="text-gray-400 text-sm">Preview will appear here after parsing.</p>
