@@ -2,16 +2,18 @@ import { MarkedSegment, TokenizationOptions } from "@/types/scripture";
 
 function normalizeForLookup(word: string, opts: TokenizationOptions): string {
   let t = word.toLowerCase();
-  // Normalize Unicode apostrophes (curly/smart quotes from API text) to ASCII apostrophe
+  const hadLeadingCurlyQuote = t.startsWith("'");
+  t = t.replace(/^'+/, "");
+  const trailingCurlyIsPossessive =
+    !hadLeadingCurlyQuote && opts.includePossessives && /s'+$/.test(t);
+  if (!trailingCurlyIsPossessive) t = t.replace(/'+$/, "");
   t = t.replace(/[''ʼ]/g, "'");
   t = opts.contractionsAsSingle ? t.replace(/[^a-z0-9'-]/g, "") : t.replace(/[^a-z0-9]/g, "");
   if (!opts.includePossessives) {
     t = t.replace(/'s$/, "");
-    t = t.replace(/s'+$/, "s");  // strip plural possessive: disciples' → disciples
+    t = t.replace(/s'+$/, "s");
   }
-  // Strip trailing apostrophes not preceded by 's' (those are closing quote marks, not possessives)
   t = t.replace(/([^s])'+$/g, "$1");
-  // Always strip leading apostrophes (opening quote marks like U+2018)
   t = t.replace(/^'+/, "");
   return t;
 }

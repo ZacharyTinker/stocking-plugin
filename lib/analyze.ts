@@ -2,23 +2,33 @@ import { Verse, TokenizationOptions, AnalysisResult } from "@/types/scripture";
 
 function normalizeToken(token: string, opts: TokenizationOptions): string {
   let t = token.toLowerCase();
-  // Normalize Unicode apostrophes (curly/smart quotes from API text) to ASCII apostrophe
-  // so that "judge's" (U+2019) and "judge's" (U+0027) are treated identically.
-  t = t.replace(/[‘’ʼ]/g, "'");
-  // Remove surrounding punctuation (keep apostrophes inside if contractions enabled)
+
+  // Handle Unicode directional quote marks before normalizing them to plain apostrophes.
+  // U+2018 ‘ LEFT SINGLE QUOTATION MARK  — always an opening quote, never a word apostrophe.
+  // U+2019 ‘ RIGHT SINGLE QUOTATION MARK — closing quote OR possessive/contraction apostrophe.
+  // If a leading U+2018 was present, the matching trailing U+2019 is a closing quote (strip it
+  // even when it follows ‘s’, e.g. "gods’"). Without a leading U+2018, trailing U+2019 after ‘s’
+  // is treated as a genuine plural possessive (e.g. disciples’).
+  const hadLeadingCurlyQuote = t.startsWith("‘");
+  t = t.replace(/^‘+/, "");
+  const trailingCurlyIsPossessive =
+    !hadLeadingCurlyQuote && opts.includePossessives && /s’+$/.test(t);
+  if (!trailingCurlyIsPossessive) t = t.replace(/’+$/, "");
+
+  // Normalize remaining mid-word Unicode apostrophes (contractions, possessives like judge’s)
+  t = t.replace(/[‘’ʼ]/g, "’");
+
   if (opts.contractionsAsSingle) {
-    t = t.replace(/[^a-z0-9'-]/g, "");
+    t = t.replace(/[^a-z0-9’-]/g, "");
   } else {
     t = t.replace(/[^a-z0-9]/g, "");
   }
   if (!opts.includePossessives) {
-    t = t.replace(/'s$/, "");
-    t = t.replace(/s'+$/, "s");  // strip plural possessive: disciples' → disciples
+    t = t.replace(/’s$/, "");
+    t = t.replace(/s’+$/, "s");
   }
-  // Strip trailing apostrophes not preceded by 's' (those are closing quote marks, not possessives)
-  t = t.replace(/([^s])'+$/g, "$1");
-  // Always strip leading apostrophes (opening quote marks like U+2018)
-  t = t.replace(/^'+/, "");
+  t = t.replace(/([^s])’+$/g, "$1");
+  t = t.replace(/^’+/, "");
   return t;
 }
 

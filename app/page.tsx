@@ -50,6 +50,7 @@ export default function Home() {
   const [displayOpts, setDisplayOpts] = useState<DisplayOptions>(DEFAULT_DISPLAY_OPTS);
   const [keyVerses, setKeyVerses] = useState<Map<string, string>>(new Map());
   const [clubStyles, setClubStyles] = useState<Record<string, ClubStyle>>({});
+  const [excludedWords, setExcludedWords] = useState<Set<string>>(new Set());
   const [tab, setTab] = useState<Tab>("input");
   const [inputMode, setInputMode] = useState<InputMode>("api");
   const [settingsOpen, setSettingsOpen] = useState(false);
@@ -62,9 +63,28 @@ export default function Home() {
     [verses, tokenOpts]
   );
 
+  // Result with manually excluded words removed from markup/export
+  const activeResult: AnalysisResult = useMemo(() => {
+    if (excludedWords.size === 0) return result;
+    const uniqueWords = new Set([...result.uniqueWords].filter(w => !excludedWords.has(w)));
+    const uniquePhrases = new Set([...result.uniquePhrases].filter(p =>
+      !p.split(" ").some(w => excludedWords.has(w))
+    ));
+    return { ...result, uniqueWords, uniquePhrases };
+  }, [result, excludedWords]);
+
   function handleParsed(v: Verse[]) {
     setVerses(v);
+    setExcludedWords(new Set());
     setTab("preview");
+  }
+
+  function handleExclude(word: string) {
+    setExcludedWords(prev => new Set([...prev, word]));
+  }
+
+  function handleRestore(word: string) {
+    setExcludedWords(prev => { const s = new Set(prev); s.delete(word); return s; });
   }
 
   return (
@@ -177,14 +197,22 @@ export default function Home() {
                 <div className="flex items-center justify-between flex-wrap gap-3 no-print">
                   <div className="text-sm text-gray-600">
                     <strong>{verses.length}</strong> verses &bull;{" "}
-                    <strong>{result.uniqueWords.size}</strong> unique words
+                    <strong>{activeResult.uniqueWords.size}</strong> unique words
+                    {excludedWords.size > 0 && <span className="text-orange-500"> ({excludedWords.size} excluded)</span>}
                     {keyVerses.size > 0 && <> &bull; <strong>{keyVerses.size}</strong> key verses</>}
                   </div>
-                  <ExportButtons result={result} tokenOpts={tokenOpts} displayOpts={displayOpts} keyVerses={keyVerses} clubStyles={clubStyles} />
+                  <ExportButtons result={activeResult} tokenOpts={tokenOpts} displayOpts={displayOpts} keyVerses={keyVerses} clubStyles={clubStyles} />
                 </div>
-                <div className="no-print"><WordList result={result} /></div>
-                <div className="no-print"><WordFrequency result={result} /></div>
-                <Preview result={result} tokenOpts={tokenOpts} displayOpts={displayOpts} keyVerses={keyVerses} clubStyles={clubStyles} />
+                <div className="no-print">
+                  <WordList
+                    result={result}
+                    excludedWords={excludedWords}
+                    onExclude={handleExclude}
+                    onRestore={handleRestore}
+                  />
+                </div>
+                <div className="no-print"><WordFrequency result={activeResult} /></div>
+                <Preview result={activeResult} tokenOpts={tokenOpts} displayOpts={displayOpts} keyVerses={keyVerses} clubStyles={clubStyles} />
               </>
             )}
           </div>
