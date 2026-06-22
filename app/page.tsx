@@ -13,7 +13,7 @@ import { Verse, TokenizationOptions, DisplayOptions, AnalysisResult, ElementStyl
 import { analyzeVerses } from "@/lib/analyze";
 
 const DEFAULT_TOKEN_OPTS: TokenizationOptions = {
-  hyphenatedWordsAsSingle: false,
+  hyphenatedWordsAsSingle: true,
   contractionsAsSingle: true,
   includePossessives: true,
   analyzeTwoWordPhrases: false,
