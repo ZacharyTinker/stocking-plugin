@@ -58,6 +58,10 @@ export function parseVerseText(
     const line = rawLine.trim();
     if (!line) continue;
 
+    // Skip horizontal-rule separator lines (rows of dashes/em-dashes the APIs sometimes
+    // emit before manuscript notes, e.g. the Pericope Adulterae section divider).
+    if (/^[-–—\s]{3,}$/.test(line)) continue;
+
     // Strip USFM paragraph markers (api.bible sometimes includes them in text content)
     const cleaned = line
       .replace(/^\\[a-z][a-z0-9]* ?/i, "")   // leading \p, \q1, \m, \li1, etc.
@@ -153,8 +157,9 @@ export function parseVerseText(
 
 function stripMarkers(text: string): string {
   return text
-    .replace(/\[[a-z]\]/gi, "")   // footnote markers [a] [b]
-    .replace(/\(\d+\)/g, "")      // cross-ref markers (1) (2)
+    .replace(/\[[a-z]\]/gi, "")          // footnote markers [a] [b]
+    .replace(/\[[^\]]*\s[^\]]*\]/g, "")  // multi-word editorial/manuscript notes [The earliest manuscripts...]
+    .replace(/\(\d+\)/g, "")             // cross-ref markers (1) (2)
     .replace(/\\[a-z][a-z0-9]*/gi, "")  // inline USFM markers \nd \add \wj etc.
     .replace(/\s{2,}/g, " ")
     .trim();
