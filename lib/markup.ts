@@ -7,8 +7,10 @@ function normalizeForLookup(word: string, opts: TokenizationOptions): string {
   t = opts.contractionsAsSingle ? t.replace(/[^a-z0-9'-]/g, "") : t.replace(/[^a-z0-9]/g, "");
   if (!opts.includePossessives) {
     t = t.replace(/'s$/, "");
-    t = t.replace(/'+$/g, "");  // also strip plural possessive trailing apostrophe
+    t = t.replace(/s'+$/, "s");  // strip plural possessive: disciples' → disciples
   }
+  // Strip trailing apostrophes not preceded by 's' (those are closing quote marks, not possessives)
+  t = t.replace(/([^s])'+$/g, "$1");
   // Always strip leading apostrophes (opening quote marks like U+2018)
   t = t.replace(/^'+/, "");
   return t;
