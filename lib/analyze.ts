@@ -95,8 +95,12 @@ export function analyzeVerses(verses: Verse[], opts: TokenizationOptions): Analy
   }
 
   const uniqueWords = new Set<string>();
+  const uniqueWordVerses = new Map<string, string>();
   for (const [word, ids] of wordIndex) {
-    if (ids.size === 1) uniqueWords.add(word);
+    if (ids.size === 1) {
+      uniqueWords.add(word);
+      uniqueWordVerses.set(word, [...ids][0]);
+    }
   }
 
   const uniquePhrases = new Set<string>();
@@ -112,5 +116,5 @@ export function analyzeVerses(verses: Verse[], opts: TokenizationOptions): Analy
     }
   }
 
-  return { verses, uniqueWords, uniquePhrases, wordFrequency };
+  return { verses, uniqueWords, uniquePhrases, wordFrequency, uniqueWordVerses };
 }

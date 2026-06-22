@@ -68,6 +68,8 @@ export interface AnalysisResult {
   uniquePhrases: Set<string>;
   /** Normalized word → total occurrence count across all verses */
   wordFrequency: Map<string, number>;
+  /** Unique word → the single verse ID ("Book Ch:V") where it appears */
+  uniqueWordVerses: Map<string, string>;
 }
 
 /** Visual indicator style for a Key Verse club level */

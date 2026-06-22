@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import ScriptureInput from "@/components/ScriptureInput";
 import PassageSelector from "@/components/PassageSelector";
 import Preview from "@/components/Preview";
@@ -11,6 +11,8 @@ import WordFrequency from "@/components/WordFrequency";
 import KeyVerseUpload from "@/components/KeyVerseUpload";
 import { Verse, TokenizationOptions, DisplayOptions, AnalysisResult, ElementStyle, ClubStyle } from "@/types/scripture";
 import { analyzeVerses } from "@/lib/analyze";
+
+const LS_KEY = "bq-settings";
 
 const DEFAULT_TOKEN_OPTS: TokenizationOptions = {
   hyphenatedWordsAsSingle: true,
@@ -55,11 +57,42 @@ export default function Home() {
   const [inputMode, setInputMode] = useState<InputMode>("api");
   const [settingsOpen, setSettingsOpen] = useState(false);
 
+  const [exportSuffix, setExportSuffix] = useState("");
+
+  // Restore persisted settings on mount
+  useEffect(() => {
+    try {
+      const raw = localStorage.getItem(LS_KEY);
+      if (!raw) return;
+      const data = JSON.parse(raw);
+      if (data.tokenOpts) setTokenOpts({ ...DEFAULT_TOKEN_OPTS, ...data.tokenOpts });
+      if (data.displayOpts) setDisplayOpts({ ...DEFAULT_DISPLAY_OPTS, ...data.displayOpts });
+      if (data.clubStyles) setClubStyles(data.clubStyles);
+      if (data.excludedWords) setExcludedWords(new Set(data.excludedWords as string[]));
+      if (data.keyVerses) setKeyVerses(new Map(data.keyVerses as [string, string][]));
+      if (data.exportSuffix) setExportSuffix(data.exportSuffix);
+    } catch { /* ignore corrupted storage */ }
+  }, []);
+
+  // Persist settings whenever they change
+  useEffect(() => {
+    try {
+      localStorage.setItem(LS_KEY, JSON.stringify({
+        tokenOpts,
+        displayOpts,
+        clubStyles,
+        excludedWords: [...excludedWords],
+        keyVerses: [...keyVerses],
+        exportSuffix,
+      }));
+    } catch { /* ignore quota errors */ }
+  }, [tokenOpts, displayOpts, clubStyles, excludedWords, keyVerses, exportSuffix]);
+
   const result: AnalysisResult = useMemo(
     () =>
       verses.length > 0
         ? analyzeVerses(verses, tokenOpts)
-        : { verses: [], uniqueWords: new Set(), uniquePhrases: new Set(), wordFrequency: new Map() },
+        : { verses: [], uniqueWords: new Set(), uniquePhrases: new Set(), wordFrequency: new Map(), uniqueWordVerses: new Map() },
     [verses, tokenOpts]
   );
 
@@ -67,11 +100,20 @@ export default function Home() {
   const activeResult: AnalysisResult = useMemo(() => {
     if (excludedWords.size === 0) return result;
     const uniqueWords = new Set([...result.uniqueWords].filter(w => !excludedWords.has(w)));
+    const uniqueWordVerses = new Map([...result.uniqueWordVerses].filter(([w]) => !excludedWords.has(w)));
     const uniquePhrases = new Set([...result.uniquePhrases].filter(p =>
       !p.split(" ").some(w => excludedWords.has(w))
     ));
-    return { ...result, uniqueWords, uniquePhrases };
+    return { ...result, uniqueWords, uniqueWordVerses, uniquePhrases };
   }, [result, excludedWords]);
+
+  const passageName = useMemo(() => {
+    if (verses.length === 0) return "Scripture";
+    const book = verses[0].book;
+    const firstCh = verses[0].chapter;
+    const lastCh = verses[verses.length - 1].chapter;
+    return firstCh === lastCh ? `${book} ${firstCh}` : `${book} ${firstCh}-${lastCh}`;
+  }, [verses]);
 
   function handleParsed(v: Verse[]) {
     setVerses(v);
@@ -201,7 +243,16 @@ export default function Home() {
                     {excludedWords.size > 0 && <span className="text-orange-500"> ({excludedWords.size} excluded)</span>}
                     {keyVerses.size > 0 && <> &bull; <strong>{keyVerses.size}</strong> key verses</>}
                   </div>
-                  <ExportButtons result={activeResult} tokenOpts={tokenOpts} displayOpts={displayOpts} keyVerses={keyVerses} clubStyles={clubStyles} />
+                  <ExportButtons
+                    result={activeResult}
+                    tokenOpts={tokenOpts}
+                    displayOpts={displayOpts}
+                    keyVerses={keyVerses}
+                    clubStyles={clubStyles}
+                    passageName={passageName}
+                    exportSuffix={exportSuffix}
+                    onExportSuffixChange={setExportSuffix}
+                  />
                 </div>
                 <div className="no-print">
                   <WordList

@@ -10,10 +10,18 @@ interface Props {
   displayOpts: DisplayOptions;
   keyVerses?: Map<string, string>;
   clubStyles?: Record<string, ClubStyle>;
+  passageName?: string;
+  exportSuffix?: string;
+  onExportSuffixChange?: (s: string) => void;
 }
 
-export default function ExportButtons({ result, tokenOpts, displayOpts, keyVerses, clubStyles }: Props) {
-  const { verses, uniqueWords, uniquePhrases } = result;
+export default function ExportButtons({ result, tokenOpts, displayOpts, keyVerses, clubStyles, passageName = "Scripture", exportSuffix = "", onExportSuffixChange }: Props) {
+  const { verses, uniqueWords, uniquePhrases, uniqueWordVerses } = result;
+
+  function fileName(label?: string): string {
+    const base = exportSuffix.trim() ? `${passageName} ${exportSuffix.trim()}` : passageName;
+    return label ? `${base} ${label}` : base;
+  }
 
   async function handleDocx() {
     const { exportToDocx } = await import("@/lib/exportDocx");
@@ -31,7 +39,7 @@ export default function ExportButtons({ result, tokenOpts, displayOpts, keyVerse
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
     a.href = url;
-    a.download = "scripture-markup.docx";
+    a.download = `${fileName()}.docx`;
     a.click();
     URL.revokeObjectURL(url);
   }
@@ -212,7 +220,7 @@ ${legendHtml}`;
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
     a.href = url;
-    a.download = "scripture-markup.html";
+    a.download = `${fileName()}.html`;
     a.click();
     URL.revokeObjectURL(url);
   }
@@ -222,6 +230,25 @@ ${legendHtml}`;
     exportStudyCards(verses, uniqueWords, uniquePhrases, tokenOpts, displayOpts);
   }
 
+  function handleKeywords() {
+    import("@/lib/exportKeywords").then(({ exportKeywords }) => {
+      exportKeywords(verses, uniqueWords, uniqueWordVerses, fileName());
+    });
+  }
+
+  function handleAlphabetical() {
+    import("@/lib/exportAlphabetical").then(({ exportAlphabetical }) => {
+      exportAlphabetical(verses, uniqueWords, fileName());
+    });
+  }
+
+  function handleKeyVerseGrid() {
+    if (!keyVerses || !clubStyles || keyVerses.size === 0) return;
+    import("@/lib/exportKeyVerseGrid").then(({ exportKeyVerseGrid }) => {
+      exportKeyVerseGrid(verses, keyVerses, clubStyles, fileName());
+    });
+  }
+
   function handlePrint() {
     window.print();
   }
@@ -229,31 +256,50 @@ ${legendHtml}`;
   if (verses.length === 0) return null;
 
   return (
-    <div className="flex gap-3 flex-wrap no-print">
-      <button
-        onClick={handleDocx}
-        className="bg-green-600 text-white px-5 py-2 rounded text-sm hover:bg-green-700 transition-colors"
-      >
-        Export DOCX
-      </button>
-      <button
-        onClick={handleHTML}
-        className="bg-indigo-600 text-white px-5 py-2 rounded text-sm hover:bg-indigo-700 transition-colors"
-      >
-        Export HTML
-      </button>
-      <button
-        onClick={handleStudyCards}
-        className="bg-purple-600 text-white px-5 py-2 rounded text-sm hover:bg-purple-700 transition-colors"
-      >
-        Study Cards
-      </button>
-      <button
-        onClick={handlePrint}
-        className="border px-5 py-2 rounded text-sm text-gray-700 hover:bg-gray-50 transition-colors"
-      >
-        Print
-      </button>
+    <div className="flex flex-col gap-2 no-print">
+      {/* Export name suffix */}
+      <div className="flex items-center gap-2 text-sm">
+        <span className="text-gray-500 text-xs whitespace-nowrap">File name:</span>
+        <span className="text-gray-700 text-xs font-medium">{passageName}</span>
+        <input
+          type="text"
+          placeholder="optional suffix…"
+          value={exportSuffix}
+          onChange={(e) => onExportSuffixChange?.(e.target.value)}
+          className="border rounded px-2 py-0.5 text-xs text-gray-700 w-36"
+        />
+      </div>
+
+      {/* Main exports */}
+      <div className="flex gap-2 flex-wrap">
+        <button onClick={handleDocx} className="bg-green-600 text-white px-4 py-1.5 rounded text-sm hover:bg-green-700 transition-colors">
+          Export DOCX
+        </button>
+        <button onClick={handleHTML} className="bg-indigo-600 text-white px-4 py-1.5 rounded text-sm hover:bg-indigo-700 transition-colors">
+          Export HTML
+        </button>
+        <button onClick={handleStudyCards} className="bg-purple-600 text-white px-4 py-1.5 rounded text-sm hover:bg-purple-700 transition-colors">
+          Study Cards
+        </button>
+        <button onClick={handlePrint} className="border px-4 py-1.5 rounded text-sm text-gray-700 hover:bg-gray-50 transition-colors">
+          Print
+        </button>
+      </div>
+
+      {/* Addon exports */}
+      <div className="flex gap-2 flex-wrap">
+        <button onClick={handleKeywords} className="bg-amber-600 text-white px-4 py-1.5 rounded text-sm hover:bg-amber-700 transition-colors">
+          Keywords List
+        </button>
+        <button onClick={handleAlphabetical} className="bg-teal-600 text-white px-4 py-1.5 rounded text-sm hover:bg-teal-700 transition-colors">
+          Alphabetical Verses
+        </button>
+        {keyVerses && keyVerses.size > 0 && (
+          <button onClick={handleKeyVerseGrid} className="bg-rose-600 text-white px-4 py-1.5 rounded text-sm hover:bg-rose-700 transition-colors">
+            Key Verse Grid
+          </button>
+        )}
+      </div>
     </div>
   );
 }
