@@ -102,11 +102,19 @@ export default function SettingsPanel({ tokenOpts, displayOpts, onTokenChange, o
             baseFontSize={displayOpts.fontSize}
           />
         )}
-        {tokenOpts.includeUniquePhrases && (
+        {tokenOpts.includeUniquePhrases && tokenOpts.analyzeTwoWordPhrases && (
           <StylePicker
-            label="Unique phrase style"
-            value={displayOpts.phraseStyle}
-            onChange={(s) => onDisplayChange({ ...displayOpts, phraseStyle: s })}
+            label="Unique 2-word phrase style"
+            value={displayOpts.phrase2Style}
+            onChange={(s) => onDisplayChange({ ...displayOpts, phrase2Style: s })}
+            baseFontSize={displayOpts.fontSize}
+          />
+        )}
+        {tokenOpts.includeUniquePhrases && tokenOpts.analyzeThreeWordPhrases && (
+          <StylePicker
+            label="Unique 3-word phrase style"
+            value={displayOpts.phrase3Style}
+            onChange={(s) => onDisplayChange({ ...displayOpts, phrase3Style: s })}
             baseFontSize={displayOpts.fontSize}
           />
         )}
@@ -142,6 +150,7 @@ export default function SettingsPanel({ tokenOpts, displayOpts, onTokenChange, o
           label="Verse number"
           value={displayOpts.verseNumberStyle}
           onChange={(s) => onDisplayChange({ ...displayOpts, verseNumberStyle: s })}
+          showSuperscript
         />
       </section>
 
@@ -193,10 +202,12 @@ function ElementStylePicker({
   label,
   value,
   onChange,
+  showSuperscript = false,
 }: {
   label: string;
   value: ElementStyle;
   onChange: (s: ElementStyle) => void;
+  showSuperscript?: boolean;
 }) {
   function patch(p: Partial<ElementStyle>) {
     onChange({ ...value, ...p });
@@ -239,6 +250,16 @@ function ElementStylePicker({
           />
           <span className="text-xs text-gray-600">px size</span>
         </label>
+        {showSuperscript && (
+          <label className="flex items-center gap-1 cursor-pointer">
+            <input
+              type="checkbox"
+              checked={value.superscript !== false}
+              onChange={(e) => patch({ superscript: e.target.checked })}
+            />
+            <span className="text-xs text-gray-600">superscript</span>
+          </label>
+        )}
       </div>
 
       <div className="space-y-1">

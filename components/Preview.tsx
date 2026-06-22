@@ -93,6 +93,13 @@ export default function Preview({ result, tokenOpts, displayOpts, keyVerses, clu
           <span className="select-none" style={{ marginRight: "0.25em" }}>
             <IndicatorDemo verseNum={verse.verse} clubStyle={clubStyle} />
           </span>
+        ) : verseNumberStyle.superscript === false ? (
+          <span
+            className="verse-number select-none"
+            style={{ ...elementStyleToCSS(verseNumberStyle), marginRight: "0.3em" }}
+          >
+            {verse.verse}
+          </span>
         ) : (
           <sup
             className="verse-number select-none"
@@ -103,7 +110,10 @@ export default function Preview({ result, tokenOpts, displayOpts, keyVerses, clu
         )}
         {segments.map((seg, i) => {
           let style: React.CSSProperties = {};
-          if (seg.isUniquePhrase) style = { ...style, ...markupStyleToCSS(displayOpts.phraseStyle, displayOpts.fontSize) };
+          if (seg.isUniquePhrase) {
+            const phraseStyle = seg.phraseLen === 3 ? displayOpts.phrase3Style : displayOpts.phrase2Style;
+            style = { ...style, ...markupStyleToCSS(phraseStyle, displayOpts.fontSize) };
+          }
           if (seg.isUniqueWord)   style = { ...style, ...markupStyleToCSS(displayOpts.wordStyle, displayOpts.fontSize) };
           const cls = [seg.isUniqueWord ? "unique-word" : "", seg.isUniquePhrase ? "unique-phrase" : ""].filter(Boolean).join(" ");
           return (

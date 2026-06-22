@@ -23,11 +23,11 @@ export function exportStudyCards(
   tokenOpts: TokenizationOptions,
   displayOpts: DisplayOptions
 ): void {
-  const { wordStyle, phraseStyle, fontSize, fontFamily } = displayOpts;
+  const { wordStyle, phrase2Style, phrase3Style, fontSize, fontFamily } = displayOpts;
 
-  function segStyle(seg: { isUniqueWord: boolean; isUniquePhrase: boolean }): string {
+  function segStyle(seg: { isUniqueWord: boolean; isUniquePhrase: boolean; phraseLen?: 2 | 3 }): string {
     const parts: string[] = [];
-    if (seg.isUniquePhrase) parts.push(markupAttr(phraseStyle, fontSize));
+    if (seg.isUniquePhrase) parts.push(markupAttr(seg.phraseLen === 3 ? phrase3Style : phrase2Style, fontSize));
     if (seg.isUniqueWord) parts.push(markupAttr(wordStyle, fontSize));
     return parts.filter(Boolean).join(";");
   }

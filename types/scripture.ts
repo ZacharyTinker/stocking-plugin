@@ -37,6 +37,8 @@ export interface ElementStyle {
   color: string;
   /** Absolute font size in px */
   fontSize: number;
+  /** Render as superscript (only meaningful for verse numbers; defaults to true) */
+  superscript?: boolean;
 }
 
 export interface DisplayOptions {
@@ -46,7 +48,10 @@ export interface DisplayOptions {
   includeSectionHeadings: boolean;
   includeFootnotes: boolean;
   wordStyle: MarkupStyle;
-  phraseStyle: MarkupStyle;
+  /** Style for unique 2-word phrases */
+  phrase2Style: MarkupStyle;
+  /** Style for unique 3-word phrases */
+  phrase3Style: MarkupStyle;
   bookTitleStyle: ElementStyle;
   chapterHeadingStyle: ElementStyle;
   sectionHeadingStyle: ElementStyle;
@@ -93,4 +98,6 @@ export interface MarkedSegment {
   text: string;
   isUniqueWord: boolean;
   isUniquePhrase: boolean;
+  /** Word count of the phrase span (2 or 3) when isUniquePhrase is true */
+  phraseLen?: 2 | 3;
 }

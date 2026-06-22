@@ -54,7 +54,7 @@ async function fetchChunk(ref: PassageRef, apiKey: string): Promise<Verse[]> {
     "include-passage-horizontal-lines": "false",
     "include-heading-horizontal-lines": "false",
     "indent-paragraphs": "0",
-    "indent-poetry": "false",
+    "indent-poetry": "true",
     "indent-declares": "0",
     "indent-psalm-doxology": "0",
     "line-length": "0",

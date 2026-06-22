@@ -31,11 +31,12 @@ const DEFAULT_DISPLAY_OPTS: DisplayOptions = {
   includeSectionHeadings: true,
   includeFootnotes: false,
   wordStyle: { bold: true, italic: false, underline: false, highlight: "", color: "", sizeBoost: 0 },
-  phraseStyle: { bold: false, italic: false, underline: true, highlight: "", color: "", sizeBoost: 0 },
+  phrase2Style: { bold: false, italic: false, underline: true, highlight: "", color: "", sizeBoost: 0 },
+  phrase3Style: { bold: false, italic: false, underline: false, highlight: "#add8e6", color: "", sizeBoost: 0 },
   bookTitleStyle:      { ...DEFAULT_ELEMENT, bold: true, fontSize: 26 },
   chapterHeadingStyle: { ...DEFAULT_ELEMENT, bold: true, fontSize: 20 },
   sectionHeadingStyle: { ...DEFAULT_ELEMENT, bold: true, italic: true, fontSize: 14 },
-  verseNumberStyle:    { ...DEFAULT_ELEMENT, color: "#888888", fontSize: 10 },
+  verseNumberStyle:    { ...DEFAULT_ELEMENT, color: "#888888", fontSize: 10, superscript: true },
   chapterPageBreak: false,
 };
 

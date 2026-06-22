@@ -8,7 +8,10 @@ import { Verse } from "@/types/scripture";
  *
  * Edge cases handled:
  *   - [N] at end of line with no text → text continues on the next non-marker line
- *   - Non-verse lines while no pending-verse exists → section heading candidates
+ *   - Indented non-marker lines (poetry / dialogue continuation) → appended to the
+ *     previous verse. Headings are flush-left; poetry/dialogue lines are indented,
+ *     which is how both APIs distinguish them in plain-text output.
+ *   - Flush-left non-marker lines → section heading candidates
  *   - Bare digit lines (chapter numbers) → skipped
  *   - USFM paragraph markers (\p, \q1, \m, …) that api.bible may include → stripped
  *   - Chapter boundary: verse [1] reappearing after at least one verse has been seen
@@ -48,6 +51,10 @@ export function parseVerseText(
   }
 
   for (const rawLine of lines) {
+    // Detect leading indentation in the raw line *before* trimming. Headings are
+    // flush-left; poetry and dialogue continuation lines are indented.
+    const indented = /^[ \t]/.test(rawLine);
+
     const line = rawLine.trim();
     if (!line) continue;
 
@@ -71,8 +78,16 @@ export function parseVerseText(
           seenFirstVerse = true;
         }
         // If still empty after stripping (e.g. pure footnote marker line), keep waiting
+      } else if (indented && verses.length > 0) {
+        // Indented continuation of the previous verse (poetry / wrapped dialogue),
+        // not a heading. Append it to the last verse's text.
+        const text = stripMarkers(cleaned);
+        if (text) {
+          const prev = verses[verses.length - 1];
+          prev.text = prev.text ? `${prev.text} ${text}` : text;
+        }
       } else {
-        // No pending verse — treat as potential section heading
+        // Flush-left line with no pending verse — treat as a section heading
         pendingHeading.push(cleaned);
       }
       continue;

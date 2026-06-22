@@ -32,19 +32,21 @@ function segmentsToRuns(
   verseNumber: number,
   segments: MarkedSegment[],
   wordStyle: MarkupStyle,
-  phraseStyle: MarkupStyle,
+  phrase2Style: MarkupStyle,
+  phrase3Style: MarkupStyle,
   baseSizePt: number,
   verseNumberStyle: ElementStyle,
   clubStyle?: ClubStyle
 ): TextRun[] {
   const vnHalfPts = Math.round(verseNumberStyle.fontSize * 0.75) * 2;
+  const superscript = verseNumberStyle.superscript !== false;
 
   const verseNumRuns: TextRun[] = clubStyle && clubStyle.indicator !== "none"
     ? clubIndicatorRun(verseNumber, clubStyle, vnHalfPts)
     : [
         new TextRun({
           text: `${verseNumber}`,
-          superScript: true,
+          superScript: superscript,
           size: vnHalfPts,
           bold: verseNumberStyle.bold,
           italics: verseNumberStyle.italic,
@@ -55,6 +57,7 @@ function segmentsToRuns(
 
   const runs: TextRun[] = [...verseNumRuns];
   for (const seg of segments) {
+    const phraseStyle = seg.phraseLen === 3 ? phrase3Style : phrase2Style;
     // Merge styles: phrase first, word on top (word wins for conflicting props)
     const s: MarkupStyle = seg.isUniqueWord
       ? {
@@ -115,7 +118,7 @@ export async function exportToDocx(
 ): Promise<Blob> {
   const {
     includeSectionHeadings,
-    wordStyle, phraseStyle, fontSize,
+    wordStyle, phrase2Style, phrase3Style, fontSize,
     bookTitleStyle, chapterHeadingStyle, sectionHeadingStyle, verseNumberStyle,
     chapterPageBreak,
   } = displayOpts;
@@ -173,7 +176,7 @@ export async function exportToDocx(
 
     paragraphs.push(
       new Paragraph({
-        children: segmentsToRuns(verse.verse, segments, wordStyle, phraseStyle, fontSize, verseNumberStyle, clubStyle),
+        children: segmentsToRuns(verse.verse, segments, wordStyle, phrase2Style, phrase3Style, fontSize, verseNumberStyle, clubStyle),
         spacing: { after: 60 },
       })
     );

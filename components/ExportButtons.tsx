@@ -37,9 +37,10 @@ export default function ExportButtons({ result, tokenOpts, displayOpts, keyVerse
   }
 
   function handleHTML() {
-    const { wordStyle, phraseStyle, fontSize,
+    const { wordStyle, phrase2Style, phrase3Style, fontSize,
             bookTitleStyle, chapterHeadingStyle, sectionHeadingStyle, verseNumberStyle,
             chapterPageBreak } = displayOpts;
+    const superscript = verseNumberStyle.superscript !== false;
 
     function markupAttr(s: typeof wordStyle): string {
       const parts: string[] = [];
@@ -63,9 +64,9 @@ export default function ExportButtons({ result, tokenOpts, displayOpts, keyVerse
       return parts.join(";");
     }
 
-    function segStyle(seg: { isUniqueWord: boolean; isUniquePhrase: boolean }): string {
+    function segStyle(seg: { isUniqueWord: boolean; isUniquePhrase: boolean; phraseLen?: 2 | 3 }): string {
       const parts: string[] = [];
-      if (seg.isUniquePhrase) parts.push(markupAttr(phraseStyle));
+      if (seg.isUniquePhrase) parts.push(markupAttr(seg.phraseLen === 3 ? phrase3Style : phrase2Style));
       if (seg.isUniqueWord) parts.push(markupAttr(wordStyle));
       return parts.filter(Boolean).join(";");
     }
@@ -82,7 +83,7 @@ export default function ExportButtons({ result, tokenOpts, displayOpts, keyVerse
   h1.book-title { margin-top: 2rem; ${elementAttr(bookTitleStyle)} }
   h2.chapter-heading { margin-top: 1.5rem; ${elementAttr(chapterHeadingStyle)}${chapterPageBreak ? " page-break-before:always;" : ""} }
   h3.section-heading { margin-top: 1rem; ${elementAttr(sectionHeadingStyle)} }
-  .verse-number { ${elementAttr(verseNumberStyle)} margin-right: 0.25em; vertical-align: super; }
+  .verse-number { ${elementAttr(verseNumberStyle)} margin-right: 0.25em;${superscript ? " vertical-align: super;" : ""} }
   .verse-line { margin: 0.2em 0; }
 </style>
 </head>
@@ -111,16 +112,17 @@ export default function ExportButtons({ result, tokenOpts, displayOpts, keyVerse
       const club = keyVerses?.get(verseId);
       const cs = club ? clubStyles?.[club] : undefined;
 
+      const vnTag = superscript ? "sup" : "span";
       let verseNumHtml: string;
       if (cs && cs.indicator !== "none") {
         if (cs.indicator === "dot") {
-          verseNumHtml = `<span style="color:${cs.color};font-size:0.55em;vertical-align:super;margin-right:0.1em">•</span><sup class="verse-number">${verse.verse}</sup>`;
+          verseNumHtml = `<span style="color:${cs.color};font-size:0.55em;${superscript ? "vertical-align:super;" : ""}margin-right:0.1em">•</span><${vnTag} class="verse-number">${verse.verse}</${vnTag}>`;
         } else {
           const bg = cs.indicator === "filled" ? `background:${cs.color};color:white` : `border:1.5px solid ${cs.color};color:#555`;
-          verseNumHtml = `<span style="display:inline-flex;align-items:center;justify-content:center;min-width:1.6em;height:1.6em;border-radius:50%;${bg};font-size:${verseNumberStyle.fontSize}px;vertical-align:super;line-height:1;margin-right:0.2em">${verse.verse}</span>`;
+          verseNumHtml = `<span style="display:inline-flex;align-items:center;justify-content:center;min-width:1.6em;height:1.6em;border-radius:50%;${bg};font-size:${verseNumberStyle.fontSize}px;${superscript ? "vertical-align:super;" : ""}line-height:1;margin-right:0.2em">${verse.verse}</span>`;
         }
       } else {
-        verseNumHtml = `<sup class="verse-number">${verse.verse}</sup>`;
+        verseNumHtml = `<${vnTag} class="verse-number">${verse.verse}</${vnTag}>`;
       }
       html += `<p class="verse-line">${verseNumHtml}`;
       for (const seg of segments) {

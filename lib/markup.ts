@@ -71,7 +71,7 @@ export function markupVerse(
     const spanLen = phraseSpans[i];
     if (spanLen > 0) {
       const phraseWords = rawWords.slice(i, i + spanLen).join(" ");
-      segments.push({ text: phraseWords, isUniqueWord: false, isUniquePhrase: true });
+      segments.push({ text: phraseWords, isUniqueWord: false, isUniquePhrase: true, phraseLen: spanLen as 2 | 3 });
       i += spanLen;
     } else {
       const isUnique = includeUniqueWords && uniqueWords.has(normalized[i]);
@@ -93,6 +93,7 @@ export function markupVerse(
         text: seg.text,
         isUniqueWord: normed.some((nw) => uniqueWords.has(nw)),
         isUniquePhrase: true,
+        phraseLen: seg.phraseLen,
       });
     } else {
       finalSegments.push(seg);
