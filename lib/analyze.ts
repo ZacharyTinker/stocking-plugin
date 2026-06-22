@@ -2,6 +2,9 @@ import { Verse, TokenizationOptions, AnalysisResult } from "@/types/scripture";
 
 function normalizeToken(token: string, opts: TokenizationOptions): string {
   let t = token.toLowerCase();
+  // Normalize Unicode apostrophes (curly/smart quotes from API text) to ASCII apostrophe
+  // so that "judge's" (U+2019) and "judge's" (U+0027) are treated identically.
+  t = t.replace(/[‘’ʼ]/g, "'");
   // Remove surrounding punctuation (keep apostrophes inside if contractions enabled)
   if (opts.contractionsAsSingle) {
     t = t.replace(/[^a-z0-9'-]/g, "");

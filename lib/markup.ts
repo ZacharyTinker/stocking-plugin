@@ -2,6 +2,8 @@ import { MarkedSegment, TokenizationOptions } from "@/types/scripture";
 
 function normalizeForLookup(word: string, opts: TokenizationOptions): string {
   let t = word.toLowerCase();
+  // Normalize Unicode apostrophes (curly/smart quotes from API text) to ASCII apostrophe
+  t = t.replace(/[''ʼ]/g, "'");
   t = opts.contractionsAsSingle ? t.replace(/[^a-z0-9'-]/g, "") : t.replace(/[^a-z0-9]/g, "");
   if (!opts.includePossessives) t = t.replace(/'s$/, "");
   return t;

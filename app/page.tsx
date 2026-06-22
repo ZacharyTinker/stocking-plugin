@@ -15,7 +15,7 @@ import { analyzeVerses } from "@/lib/analyze";
 const DEFAULT_TOKEN_OPTS: TokenizationOptions = {
   hyphenatedWordsAsSingle: false,
   contractionsAsSingle: true,
-  includePossessives: false,
+  includePossessives: true,
   analyzeTwoWordPhrases: false,
   analyzeThreeWordPhrases: false,
   includeUniqueWords: true,
