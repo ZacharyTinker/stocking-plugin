@@ -13,9 +13,10 @@ function normalizeToken(token: string, opts: TokenizationOptions): string {
   }
   if (!opts.includePossessives) {
     t = t.replace(/'s$/, "");
+    t = t.replace(/'+$/g, "");  // also strip plural possessive trailing apostrophe
   }
-  // Strip leading/trailing apostrophes (opening/closing quote converted from U+2018/U+2019)
-  t = t.replace(/^'+|'+$/g, "");
+  // Always strip leading apostrophes (opening quote marks like U+2018)
+  t = t.replace(/^'+/, "");
   return t;
 }
 

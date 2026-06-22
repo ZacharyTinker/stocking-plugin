@@ -5,9 +5,12 @@ function normalizeForLookup(word: string, opts: TokenizationOptions): string {
   // Normalize Unicode apostrophes (curly/smart quotes from API text) to ASCII apostrophe
   t = t.replace(/[''ʼ]/g, "'");
   t = opts.contractionsAsSingle ? t.replace(/[^a-z0-9'-]/g, "") : t.replace(/[^a-z0-9]/g, "");
-  if (!opts.includePossessives) t = t.replace(/'s$/, "");
-  // Strip leading/trailing apostrophes (opening/closing quote converted from U+2018/U+2019)
-  t = t.replace(/^'+|'+$/g, "");
+  if (!opts.includePossessives) {
+    t = t.replace(/'s$/, "");
+    t = t.replace(/'+$/g, "");  // also strip plural possessive trailing apostrophe
+  }
+  // Always strip leading apostrophes (opening quote marks like U+2018)
+  t = t.replace(/^'+/, "");
   return t;
 }
 
