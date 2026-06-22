@@ -1,6 +1,6 @@
 "use client";
 
-import { ClubStyle, CLUB_COLOR_PALETTE } from "@/types/scripture";
+import { ClubStyle, ElementStyle, CLUB_COLOR_PALETTE } from "@/types/scripture";
 
 interface Props {
   club: string;
@@ -90,34 +90,48 @@ export default function ClubStylePicker({ club, style, count, onChange }: Props)
 }
 
 /** Renders the circle indicator around a sample verse number, matching preview/export output */
-export function IndicatorDemo({ verseNum, clubStyle }: { verseNum: number; clubStyle: ClubStyle }) {
+export function IndicatorDemo({
+  verseNum,
+  clubStyle,
+  verseNumberStyle,
+}: {
+  verseNum: number;
+  clubStyle: ClubStyle;
+  verseNumberStyle?: ElementStyle;
+}) {
   if (clubStyle.indicator === "none") return null;
+
+  const vnSize = verseNumberStyle?.fontSize ?? 10;
+  const vnColor = verseNumberStyle?.color || "#888888";
+  const isSuperscript = verseNumberStyle ? verseNumberStyle.superscript !== false : true;
+  const valign: React.CSSProperties["verticalAlign"] = isSuperscript ? "super" : "baseline";
 
   if (clubStyle.indicator === "dot") {
     return (
       <span>
-        <span style={{ color: clubStyle.color, fontSize: "0.55em", marginRight: "0.1em", verticalAlign: "super" }}>•</span>
-        <sup style={{ color: "#888", fontSize: "0.6em" }}>{verseNum}</sup>
+        <span style={{ color: clubStyle.color, fontSize: `${vnSize}px`, marginRight: "0.1em", verticalAlign: valign }}>•</span>
+        <span style={{ color: vnColor, fontSize: `${vnSize}px`, verticalAlign: valign }}>{verseNum}</span>
       </span>
     );
   }
 
   const isFilled = clubStyle.indicator === "filled";
+  const circleSize = Math.round(vnSize * 1.6);
   return (
     <span
       style={{
         display: "inline-flex",
         alignItems: "center",
         justifyContent: "center",
-        minWidth: "1.6em",
-        height: "1.6em",
+        minWidth: `${circleSize}px`,
+        height: `${circleSize}px`,
         borderRadius: "50%",
         background: isFilled ? clubStyle.color : "transparent",
         border: !isFilled ? `1.5px solid ${clubStyle.color}` : "none",
-        fontSize: "0.65em",
-        verticalAlign: "super",
+        fontSize: `${vnSize}px`,
+        verticalAlign: valign,
         lineHeight: 1,
-        color: isFilled ? "white" : "#555",
+        color: isFilled ? "white" : vnColor,
         fontWeight: "normal",
         fontStyle: "normal",
       }}

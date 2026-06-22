@@ -13,17 +13,17 @@ function hexToShading(hex: string): string {
   return hex.replace("#", "").toUpperCase();
 }
 
-function clubIndicatorRun(verseNumber: number, clubStyle: ClubStyle, vnHalfPts: number): TextRun[] {
-  // Use Unicode circle chars as the indicator before the verse number
+function clubIndicatorRun(verseNumber: number, clubStyle: ClubStyle, vnHalfPts: number, superScript: boolean, vnColor: string): TextRun[] {
   const char =
     clubStyle.indicator === "filled"  ? "●" :
     clubStyle.indicator === "outline" ? "○" :
     clubStyle.indicator === "dot"     ? "•" : "";
   if (!char) return [];
-  const color = clubStyle.color.replace("#", "") || "888888";
+  const indicatorColor = clubStyle.color.replace("#", "") || "888888";
+  const numColor = vnColor.replace("#", "") || "888888";
   return [
-    new TextRun({ text: char, superScript: true, size: vnHalfPts, color, bold: false }),
-    new TextRun({ text: `${verseNumber}`, superScript: true, size: vnHalfPts, color: "888888", bold: false }),
+    new TextRun({ text: char, superScript, size: vnHalfPts, color: indicatorColor, bold: false }),
+    new TextRun({ text: `${verseNumber}`, superScript, size: vnHalfPts, color: numColor, bold: false }),
     new TextRun({ text: " " }),
   ];
 }
@@ -40,9 +40,10 @@ function segmentsToRuns(
 ): TextRun[] {
   const vnHalfPts = Math.round(verseNumberStyle.fontSize * 0.75) * 2;
   const superscript = verseNumberStyle.superscript !== false;
+  const vnColor = verseNumberStyle.color || "#888888";
 
   const verseNumRuns: TextRun[] = clubStyle && clubStyle.indicator !== "none"
-    ? clubIndicatorRun(verseNumber, clubStyle, vnHalfPts)
+    ? clubIndicatorRun(verseNumber, clubStyle, vnHalfPts, superscript, vnColor)
     : [
         new TextRun({
           text: `${verseNumber}`,

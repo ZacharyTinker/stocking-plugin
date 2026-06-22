@@ -91,7 +91,7 @@ export default function Preview({ result, tokenOpts, displayOpts, keyVerses, clu
         {/* Verse number: plain or with club indicator */}
         {clubStyle && clubStyle.indicator !== "none" ? (
           <span className="select-none" style={{ marginRight: "0.25em" }}>
-            <IndicatorDemo verseNum={verse.verse} clubStyle={clubStyle} />
+            <IndicatorDemo verseNum={verse.verse} clubStyle={clubStyle} verseNumberStyle={verseNumberStyle} />
           </span>
         ) : verseNumberStyle.superscript === false ? (
           <span

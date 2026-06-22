@@ -116,7 +116,10 @@ export default function ExportButtons({ result, tokenOpts, displayOpts, keyVerse
       let verseNumHtml: string;
       if (cs && cs.indicator !== "none") {
         if (cs.indicator === "dot") {
-          verseNumHtml = `<span style="color:${cs.color};font-size:0.55em;${superscript ? "vertical-align:super;" : ""}margin-right:0.1em">•</span><${vnTag} class="verse-number">${verse.verse}</${vnTag}>`;
+          const vnSize = verseNumberStyle.fontSize;
+          const vnColor = verseNumberStyle.color || "#888888";
+          const va = superscript ? "vertical-align:super;" : "";
+          verseNumHtml = `<span style="color:${cs.color};font-size:${vnSize}px;${va}margin-right:0.1em">•</span><span style="color:${vnColor};font-size:${vnSize}px;${va}">${verse.verse}</span>`;
         } else {
           const bg = cs.indicator === "filled" ? `background:${cs.color};color:white` : `border:1.5px solid ${cs.color};color:#555`;
           verseNumHtml = `<span style="display:inline-flex;align-items:center;justify-content:center;min-width:1.6em;height:1.6em;border-radius:50%;${bg};font-size:${verseNumberStyle.fontSize}px;${superscript ? "vertical-align:super;" : ""}line-height:1;margin-right:0.2em">${verse.verse}</span>`;
