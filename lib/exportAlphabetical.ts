@@ -1,4 +1,5 @@
-import { Verse, TokenizationOptions } from "@/types/scripture";
+import { Verse } from "@/types/scripture";
+import { wrapAddonHtml } from "./exportKeywords";
 
 function esc(s: string) {
   return s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
@@ -25,27 +26,15 @@ const BOOK_ABBREV: Record<string, string> = {
   "Jude": "Jude", "Revelation": "Rev",
 };
 
-function abbrev(book: string): string {
-  return BOOK_ABBREV[book] ?? book.slice(0, 4);
-}
-
-/** Normalize a display word token to a lookup key — simplified version without opts dependency */
 function normWord(token: string): string {
   let t = token.toLowerCase();
-  // Strip leading curly open-quote
-  t = t.replace(/^['‘]+/, "");
-  // Strip trailing curly close-quote unless possessive s'
-  if (!/s['’]+$/.test(t)) t = t.replace(/['’]+$/, "");
-  // Normalize apostrophes, strip non-alpha
+  t = t.replace(/^['']+/, "");
+  if (!/s['']+$/.test(t)) t = t.replace(/['']+$/, "");
   t = t.replace(/[''ʼ]/g, "'").replace(/[^a-z0-9'-]/g, "");
   t = t.replace(/([^s])'+$/g, "$1").replace(/^'+/, "");
   return t;
 }
 
-/**
- * Find the jump-point position (1-indexed word number) in a verse.
- * Returns 0 if no unique word found in first 5 words.
- */
 function jumpPointIndex(text: string, uniqueWords: Set<string>): number {
   const tokens = text.split(/\s+/).filter(Boolean);
   for (let i = 0; i < Math.min(5, tokens.length); i++) {
@@ -54,32 +43,26 @@ function jumpPointIndex(text: string, uniqueWords: Set<string>): number {
   return 0;
 }
 
-/**
- * Insert the jump-point marker into the verse text.
- * Returns the text with " /" after the jump-point word, or text + " ||" if no valid jump.
- */
 function formatWithJump(text: string, uniqueWords: Set<string>): string {
-  const jpIdx = jumpPointIndex(text, uniqueWords); // 1-indexed
-  if (jpIdx === 0) return text + " ‖"; // || (double bar)
-
   const tokens = text.split(/\s+/).filter(Boolean);
-  return tokens
-    .map((tok, i) => (i + 1 === jpIdx ? tok + "/" : tok))
-    .join(" ");
+  const jpIdx = jumpPointIndex(text, uniqueWords);
+  // Show only first 5 display tokens
+  const display = tokens.slice(0, 5);
+  if (jpIdx === 0) return display.join(" ") + " ‖";
+  return display.map((tok, i) => (i + 1 === jpIdx ? tok + "/" : tok)).join(" ");
 }
 
-/** Sort key: strip leading punctuation/quotes for alphabetical ordering */
 function sortKey(text: string): string {
   return text.toLowerCase().replace(/^[^a-z]+/i, "");
 }
 
-export function exportAlphabetical(
+export function alphabeticalSection(
   verses: Verse[],
   uniqueWords: Set<string>,
   passageTitle: string
-): void {
+): string {
   const book = verses[0]?.book ?? "";
-  const bookAbbr = abbrev(book);
+  const bookAbbr = BOOK_ABBREV[book] ?? book.slice(0, 4);
 
   const rows = verses
     .filter((v) => v.text.trim())
@@ -90,47 +73,26 @@ export function exportAlphabetical(
     }))
     .sort((a, b) => a.sortKey.localeCompare(b.sortKey));
 
-  // Two columns
-  const half = Math.ceil(rows.length / 2);
-  const left = rows.slice(0, half);
-  const right = rows.slice(half);
-  const rowCount = Math.max(left.length, right.length);
+  const tableRows = rows
+    .map((r) => `<tr><td class="alpha-text">${esc(r.text)}</td><td class="alpha-ref">${esc(r.ref)}</td></tr>`)
+    .join("\n");
 
-  function cell(entry?: { text: string; ref: string }) {
-    if (!entry) return `<td></td><td></td>`;
-    return `<td class="verse-text">${esc(entry.text)}</td><td class="verse-ref">${esc(entry.ref)}</td>`;
-  }
-
-  let tableRows = "";
-  for (let r = 0; r < rowCount; r++) {
-    tableRows += `<tr>${cell(left[r])}<td class="gap"></td>${cell(right[r])}</tr>\n`;
-  }
-
-  const html = `<!DOCTYPE html>
-<html lang="en">
-<head>
-<meta charset="UTF-8">
-<title>Verses — Alphabetical — ${esc(passageTitle)}</title>
-<style>
-  body { font-family: Arial, sans-serif; font-size: 8pt; margin: 0.4in; }
-  h1 { font-size: 13pt; text-align: center; margin-bottom: 2px; }
-  h2 { font-size: 9pt; text-align: center; color: #555; margin-top: 0; margin-bottom: 8px; }
-  table { width: 100%; border-collapse: collapse; }
-  td { padding: 1px 2px; vertical-align: top; }
-  td.verse-text { width: 38%; }
-  td.verse-ref { width: 10%; text-align: right; color: #333; white-space: nowrap; padding-right: 4px; }
-  td.gap { width: 4%; }
-</style>
-</head>
-<body>
-<h1>Verses — Alphabetical</h1>
-<h2>${esc(passageTitle)}</h2>
-<table>
+  return `<div class="addon-section">
+<h2 class="addon-title">Verses &mdash; Alphabetical</h2>
+<p class="addon-subtitle">${esc(passageTitle)}</p>
+<table class="alpha-table"><tbody>
 ${tableRows}
-</table>
-</body>
-</html>`;
+</tbody></table>
+</div>`;
+}
 
+export function exportAlphabetical(
+  verses: Verse[],
+  uniqueWords: Set<string>,
+  passageTitle: string
+): void {
+  const body = alphabeticalSection(verses, uniqueWords, passageTitle);
+  const html = wrapAddonHtml(body, `${passageTitle} — Alphabetical`);
   const blob = new Blob([html], { type: "text/html" });
   const url = URL.createObjectURL(blob);
   const a = document.createElement("a");

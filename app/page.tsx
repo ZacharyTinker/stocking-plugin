@@ -92,7 +92,7 @@ export default function Home() {
     () =>
       verses.length > 0
         ? analyzeVerses(verses, tokenOpts)
-        : { verses: [], uniqueWords: new Set(), uniquePhrases: new Set(), wordFrequency: new Map(), uniqueWordVerses: new Map() },
+        : { verses: [], uniqueWords: new Set(), uniquePhrases: new Set(), wordFrequency: new Map(), uniqueWordVerses: new Map(), wordVerseIndex: new Map(), phraseVerseMap: new Map() },
     [verses, tokenOpts]
   );
 

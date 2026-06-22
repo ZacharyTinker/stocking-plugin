@@ -1,5 +1,6 @@
 "use client";
 
+import { useState } from "react";
 import { AnalysisResult, TokenizationOptions, DisplayOptions, ClubStyle } from "@/types/scripture";
 import { markupVerse } from "@/lib/markup";
 import { indicatorChar } from "@/components/ClubStylePicker";
@@ -15,26 +16,46 @@ interface Props {
   onExportSuffixChange?: (s: string) => void;
 }
 
-export default function ExportButtons({ result, tokenOpts, displayOpts, keyVerses, clubStyles, passageName = "Scripture", exportSuffix = "", onExportSuffixChange }: Props) {
-  const { verses, uniqueWords, uniquePhrases, uniqueWordVerses } = result;
+type AddonKey = "keywords" | "alphabetical" | "keyPhrases2" | "keyPhrases3" | "keyVerseGrid" | "concordance";
+
+const ADDON_LABELS: Record<AddonKey, string> = {
+  keywords: "Keywords",
+  alphabetical: "Alphabetical Verses",
+  keyPhrases2: "Key Phrases (2-word)",
+  keyPhrases3: "Key Phrases (3-word)",
+  keyVerseGrid: "Key Verse Grid",
+  concordance: "Concordance",
+};
+
+export default function ExportButtons({
+  result, tokenOpts, displayOpts, keyVerses, clubStyles,
+  passageName = "Scripture", exportSuffix = "", onExportSuffixChange,
+}: Props) {
+  const { verses, uniqueWords, uniquePhrases, uniqueWordVerses, wordVerseIndex, phraseVerseMap, wordFrequency } = result;
+
+  const [selectedAddons, setSelectedAddons] = useState<Set<AddonKey>>(new Set());
+
+  function toggleAddon(k: AddonKey) {
+    setSelectedAddons(prev => {
+      const s = new Set(prev);
+      if (s.has(k)) s.delete(k); else s.add(k);
+      return s;
+    });
+  }
 
   function fileName(label?: string): string {
     const base = exportSuffix.trim() ? `${passageName} ${exportSuffix.trim()}` : passageName;
     return label ? `${base} ${label}` : base;
   }
 
+  // ── Main exports ──────────────────────────────────────────────────────────
+
   async function handleDocx() {
     const { exportToDocx } = await import("@/lib/exportDocx");
     const blob = await exportToDocx(
-      verses,
-      uniqueWords,
-      uniquePhrases,
-      tokenOpts,
-      tokenOpts.includeUniqueWords,
-      tokenOpts.includeUniquePhrases,
-      displayOpts,
-      keyVerses,
-      clubStyles
+      verses, uniqueWords, uniquePhrases, tokenOpts,
+      tokenOpts.includeUniqueWords, tokenOpts.includeUniquePhrases,
+      displayOpts, keyVerses, clubStyles
     );
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
@@ -81,7 +102,6 @@ export default function ExportButtons({ result, tokenOpts, displayOpts, keyVerse
 
     const paragraphMode = displayOpts.verseLayout === "paragraph";
 
-    // Render the verse-number indicator (shared by both layouts)
     function verseNumberHTML(verse: typeof verses[number]): string {
       const verseId = `${verse.book} ${verse.chapter}:${verse.verse}`;
       const club = keyVerses?.get(verseId);
@@ -107,7 +127,6 @@ export default function ExportButtons({ result, tokenOpts, displayOpts, keyVerse
         const inlineStyle = segStyle(seg);
         const space = seg.noSpaceAfter ? "" : " ";
         if (inlineStyle) {
-          // Space outside the styled span so punctuation/spaces aren't highlighted
           out += `<span style="${inlineStyle}">${esc(seg.text)}</span>${space}`;
         } else {
           out += esc(seg.text) + space;
@@ -116,7 +135,6 @@ export default function ExportButtons({ result, tokenOpts, displayOpts, keyVerse
       return out;
     }
 
-    // Embed OpenDyslexic as base64 @font-face rules so the exported HTML is self-contained
     async function buildFontEmbed(): Promise<string> {
       if (!displayOpts.fontFamily.includes("OpenDyslexic")) return "";
       const variants = [
@@ -144,7 +162,6 @@ export default function ExportButtons({ result, tokenOpts, displayOpts, keyVerse
 
     const fontEmbed = await buildFontEmbed();
 
-    // Legend, ordered by rank, so readers understand the club hierarchy
     let legendHtml = "";
     if (clubStyles && Object.keys(clubStyles).length > 0 && keyVerses && keyVerses.size > 0) {
       const ordered = Object.entries(clubStyles).sort(([, a], [, b]) => a.rank - b.rank);
@@ -213,7 +230,6 @@ ${legendHtml}`;
       }
     }
     closePara();
-
     html += `</body></html>`;
 
     const blob = new Blob([html], { type: "text/html" });
@@ -230,34 +246,69 @@ ${legendHtml}`;
     exportStudyCards(verses, uniqueWords, uniquePhrases, tokenOpts, displayOpts);
   }
 
-  function handleKeywords() {
-    import("@/lib/exportKeywords").then(({ exportKeywords }) => {
-      exportKeywords(verses, uniqueWords, uniqueWordVerses, fileName());
-    });
-  }
-
-  function handleAlphabetical() {
-    import("@/lib/exportAlphabetical").then(({ exportAlphabetical }) => {
-      exportAlphabetical(verses, uniqueWords, fileName());
-    });
-  }
-
-  function handleKeyVerseGrid() {
-    if (!keyVerses || !clubStyles || keyVerses.size === 0) return;
-    import("@/lib/exportKeyVerseGrid").then(({ exportKeyVerseGrid }) => {
-      exportKeyVerseGrid(verses, keyVerses, clubStyles, fileName());
-    });
-  }
-
   function handlePrint() {
     window.print();
   }
 
+  // ── Addon export ──────────────────────────────────────────────────────────
+
+  async function handleExportAddons() {
+    if (selectedAddons.size === 0) return;
+
+    const { wrapAddonHtml } = await import("@/lib/exportKeywords");
+    const sections: string[] = [];
+
+    if (selectedAddons.has("keywords")) {
+      const { keywordsSection } = await import("@/lib/exportKeywords");
+      sections.push(keywordsSection(verses, uniqueWords, uniqueWordVerses, fileName()));
+    }
+    if (selectedAddons.has("alphabetical")) {
+      const { alphabeticalSection } = await import("@/lib/exportAlphabetical");
+      sections.push(alphabeticalSection(verses, uniqueWords, fileName()));
+    }
+    if (selectedAddons.has("keyPhrases2") || selectedAddons.has("keyPhrases3")) {
+      const { keyPhrasesSection } = await import("@/lib/exportKeyPhrases");
+      sections.push(keyPhrasesSection(
+        verses, uniquePhrases, phraseVerseMap, fileName(),
+        selectedAddons.has("keyPhrases2"),
+        selectedAddons.has("keyPhrases3")
+      ));
+    }
+    if (selectedAddons.has("keyVerseGrid") && keyVerses && clubStyles && keyVerses.size > 0) {
+      const { keyVerseGridSection } = await import("@/lib/exportKeyVerseGrid");
+      sections.push(keyVerseGridSection(verses, keyVerses, clubStyles, fileName()));
+    }
+    if (selectedAddons.has("concordance")) {
+      const { concordanceSection } = await import("@/lib/exportConcordance");
+      sections.push(concordanceSection(verses, wordFrequency, wordVerseIndex, fileName()));
+    }
+
+    if (sections.length === 0) return;
+    const combined = sections.join("\n");
+    const html = wrapAddonHtml(combined, fileName("Addons"));
+    const blob = new Blob([html], { type: "text/html" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `${fileName("Addons")}.html`;
+    a.click();
+    URL.revokeObjectURL(url);
+  }
+
   if (verses.length === 0) return null;
 
+  const hasKeyVerses = (keyVerses?.size ?? 0) > 0;
+  const hasPhrases = uniquePhrases.size > 0;
+
+  const allAddons: AddonKey[] = ["keywords", "alphabetical", "keyPhrases2", "keyPhrases3", "keyVerseGrid", "concordance"];
+  const disabledAddons: Set<AddonKey> = new Set([
+    ...(!hasKeyVerses ? ["keyVerseGrid"] as AddonKey[] : []),
+    ...(!hasPhrases ? ["keyPhrases2", "keyPhrases3"] as AddonKey[] : []),
+  ]);
+
   return (
-    <div className="flex flex-col gap-2 no-print">
-      {/* Export name suffix */}
+    <div className="flex flex-col gap-3 no-print">
+      {/* File name row */}
       <div className="flex items-center gap-2 text-sm">
         <span className="text-gray-500 text-xs whitespace-nowrap">File name:</span>
         <span className="text-gray-700 text-xs font-medium">{passageName}</span>
@@ -272,33 +323,39 @@ ${legendHtml}`;
 
       {/* Main exports */}
       <div className="flex gap-2 flex-wrap">
-        <button onClick={handleDocx} className="bg-green-600 text-white px-4 py-1.5 rounded text-sm hover:bg-green-700 transition-colors">
-          Export DOCX
-        </button>
-        <button onClick={handleHTML} className="bg-indigo-600 text-white px-4 py-1.5 rounded text-sm hover:bg-indigo-700 transition-colors">
-          Export HTML
-        </button>
-        <button onClick={handleStudyCards} className="bg-purple-600 text-white px-4 py-1.5 rounded text-sm hover:bg-purple-700 transition-colors">
-          Study Cards
-        </button>
-        <button onClick={handlePrint} className="border px-4 py-1.5 rounded text-sm text-gray-700 hover:bg-gray-50 transition-colors">
-          Print
-        </button>
+        <button onClick={handleDocx} className="bg-green-600 text-white px-4 py-1.5 rounded text-sm hover:bg-green-700 transition-colors">Export DOCX</button>
+        <button onClick={handleHTML} className="bg-indigo-600 text-white px-4 py-1.5 rounded text-sm hover:bg-indigo-700 transition-colors">Export HTML</button>
+        <button onClick={handleStudyCards} className="bg-purple-600 text-white px-4 py-1.5 rounded text-sm hover:bg-purple-700 transition-colors">Study Cards</button>
+        <button onClick={handlePrint} className="border px-4 py-1.5 rounded text-sm text-gray-700 hover:bg-gray-50 transition-colors">Print</button>
       </div>
 
-      {/* Addon exports */}
-      <div className="flex gap-2 flex-wrap">
-        <button onClick={handleKeywords} className="bg-amber-600 text-white px-4 py-1.5 rounded text-sm hover:bg-amber-700 transition-colors">
-          Keywords List
+      {/* Addon selector */}
+      <div className="border rounded-lg p-3 bg-gray-50">
+        <p className="text-xs font-semibold text-gray-600 mb-2">Addons — select then export together:</p>
+        <div className="flex flex-wrap gap-x-4 gap-y-1 mb-2">
+          {allAddons.map((k) => {
+            const disabled = disabledAddons.has(k);
+            return (
+              <label key={k} className={`flex items-center gap-1.5 text-xs ${disabled ? "opacity-40 cursor-not-allowed" : "cursor-pointer"}`}>
+                <input
+                  type="checkbox"
+                  checked={selectedAddons.has(k)}
+                  disabled={disabled}
+                  onChange={() => toggleAddon(k)}
+                  className="rounded"
+                />
+                {ADDON_LABELS[k]}
+              </label>
+            );
+          })}
+        </div>
+        <button
+          onClick={handleExportAddons}
+          disabled={selectedAddons.size === 0}
+          className="bg-amber-600 text-white px-4 py-1.5 rounded text-sm hover:bg-amber-700 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+        >
+          Export Selected Addons ({selectedAddons.size})
         </button>
-        <button onClick={handleAlphabetical} className="bg-teal-600 text-white px-4 py-1.5 rounded text-sm hover:bg-teal-700 transition-colors">
-          Alphabetical Verses
-        </button>
-        {keyVerses && keyVerses.size > 0 && (
-          <button onClick={handleKeyVerseGrid} className="bg-rose-600 text-white px-4 py-1.5 rounded text-sm hover:bg-rose-700 transition-colors">
-            Key Verse Grid
-          </button>
-        )}
       </div>
     </div>
   );

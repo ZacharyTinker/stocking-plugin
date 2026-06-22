@@ -104,8 +104,17 @@ export function analyzeVerses(verses: Verse[], opts: TokenizationOptions): Analy
   }
 
   const uniquePhrases = new Set<string>();
+  const phraseVerseMap = new Map<string, string>();
   for (const [phrase, ids] of phraseIndex) {
-    if (ids.size === 1) uniquePhrases.add(phrase);
+    if (ids.size === 1) {
+      uniquePhrases.add(phrase);
+      phraseVerseMap.set(phrase, [...ids][0]);
+    }
+  }
+
+  const wordVerseIndex = new Map<string, string[]>();
+  for (const [word, ids] of wordIndex) {
+    wordVerseIndex.set(word, [...ids]);
   }
 
   // Word frequency: total occurrences (not deduplicated per verse)
@@ -116,5 +125,5 @@ export function analyzeVerses(verses: Verse[], opts: TokenizationOptions): Analy
     }
   }
 
-  return { verses, uniqueWords, uniquePhrases, wordFrequency, uniqueWordVerses };
+  return { verses, uniqueWords, uniquePhrases, wordFrequency, uniqueWordVerses, wordVerseIndex, phraseVerseMap };
 }

@@ -70,6 +70,10 @@ export interface AnalysisResult {
   wordFrequency: Map<string, number>;
   /** Unique word → the single verse ID ("Book Ch:V") where it appears */
   uniqueWordVerses: Map<string, string>;
+  /** Normalized word → all verse IDs where it appears (one entry per verse, deduplicated) */
+  wordVerseIndex: Map<string, string[]>;
+  /** Unique phrase → the single verse ID where it appears */
+  phraseVerseMap: Map<string, string>;
 }
 
 /** Visual indicator style for a Key Verse club level */
