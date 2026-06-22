@@ -8,8 +8,10 @@
  *   NIV:  set API_BIBLE_NIV_ID  (requires Biblica license via api.bible)
  *   NASB: set API_BIBLE_NASB_ID (requires Lockman license via api.bible)
  *
- * api.bible limits passages to ~500 verses per request. We chunk large
- * chapter ranges into groups of CHUNK_SIZE chapters and combine results.
+ * api.bible silently truncates any passage response at 200 verses (confirmed:
+ * requesting Luke 21-24 = 218 verses returns exactly 200, cut off mid-chapter).
+ * We chunk large chapter ranges into groups of CHUNK_SIZE chapters and combine
+ * results so no single request can exceed the cap.
  */
 
 import { Verse } from "@/types/scripture";
@@ -19,10 +21,13 @@ import { usfmId } from "@/lib/bookList";
 
 const BASE = "https://api.scripture.api.bible/v1";
 
-// 5 chapters per chunk. Narrative NT books average ~50 verses/chapter (Luke ch1-10
-// = 512 verses), so 10 chapters blows past the 500-verse limit. 5 is safe for all
-// book types including Psalms (176 verses in ch 119 alone).
-const CHUNK_SIZE = 4;
+// 2 chapters per chunk. api.bible truncates responses at 200 verses. NT chapters
+// average ~50 verses, so 2 chapters (~100 verses) sits comfortably under the cap.
+// Edge case: Psalm 119 (176 verses) adjacent to another psalm can exceed 200 at a
+// chunk boundary — see VERSE_CAP guard below, which re-splits any chunk that hits
+// the cap so no verses are silently dropped.
+const CHUNK_SIZE = 2;
+const VERSE_CAP = 200;
 
 export async function fetchApiBiblePassage(
   ref: PassageRef,
@@ -42,11 +47,26 @@ export async function fetchApiBiblePassage(
 
   while (chunkStart <= ref.endChapter) {
     const chunkEnd = Math.min(chunkStart + CHUNK_SIZE - 1, ref.endChapter);
-    const chunkVerses = await fetchChunk(
+    let chunkVerses = await fetchChunk(
       { ...ref, startChapter: chunkStart, endChapter: chunkEnd },
       apiKey,
       bibleId
     );
+
+    // If a multi-chapter chunk hit the 200-verse cap, the API may have truncated
+    // it. Re-fetch each chapter individually so nothing is silently dropped.
+    if (chunkVerses.length >= VERSE_CAP && chunkEnd > chunkStart) {
+      chunkVerses = [];
+      for (let ch = chunkStart; ch <= chunkEnd; ch++) {
+        const single = await fetchChunk(
+          { ...ref, startChapter: ch, endChapter: ch },
+          apiKey,
+          bibleId
+        );
+        chunkVerses.push(...single);
+      }
+    }
+
     allVerses.push(...chunkVerses);
     chunkStart = chunkEnd + 1;
   }
