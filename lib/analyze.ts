@@ -14,6 +14,8 @@ function normalizeToken(token: string, opts: TokenizationOptions): string {
   if (!opts.includePossessives) {
     t = t.replace(/'s$/, "");
   }
+  // Strip leading/trailing apostrophes (opening/closing quote converted from U+2018/U+2019)
+  t = t.replace(/^'+|'+$/g, "");
   return t;
 }
 
