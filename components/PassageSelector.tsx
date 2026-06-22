@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Verse } from "@/types/scripture";
 import { BOOKS, chapterCount } from "@/lib/bookList";
 import { TRANSLATIONS } from "@/lib/translations";
@@ -25,11 +25,40 @@ function makeSegment(book = "1 Corinthians"): Segment {
 const OT = BOOKS.filter((b) => b.testament === "OT");
 const NT = BOOKS.filter((b) => b.testament === "NT");
 
+const PS_KEY = "bq-passage-selector";
+
 export default function PassageSelector({ onFetched }: Props) {
   const [translation, setTranslation] = useState("esv");
   const [segments, setSegments] = useState<Segment[]>([makeSegment()]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+  const [ready, setReady] = useState(false);
+
+  // Restore on mount
+  useEffect(() => {
+    try {
+      const raw = localStorage.getItem(PS_KEY);
+      if (raw) {
+        const data = JSON.parse(raw);
+        if (data.translation) setTranslation(data.translation);
+        if (Array.isArray(data.segments) && data.segments.length > 0) {
+          setSegments(data.segments.map((s: Omit<Segment, "id">) => ({ ...s, id: nextId++ })));
+        }
+      }
+    } catch { /* ignore */ }
+    setReady(true);
+  }, []);
+
+  // Persist on change (only after initial restore)
+  useEffect(() => {
+    if (!ready) return;
+    try {
+      localStorage.setItem(PS_KEY, JSON.stringify({
+        translation,
+        segments: segments.map(({ book, startChapter, endChapter }) => ({ book, startChapter, endChapter })),
+      }));
+    } catch { /* ignore */ }
+  }, [ready, translation, segments]);
 
   const selectedTranslation = TRANSLATIONS.find((t) => t.id === translation)!;
 
