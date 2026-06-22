@@ -42,10 +42,11 @@ export function exportStudyCards(
     let text = "";
     for (const seg of segments) {
       const style = segStyle(seg);
+      const space = seg.noSpaceAfter ? "" : " ";
       if (style) {
-        text += `<span style="${style}">${esc(seg.text)} </span>`;
+        text += `<span style="${style}">${esc(seg.text)}</span>${space}`;
       } else {
-        text += esc(seg.text) + " ";
+        text += esc(seg.text) + space;
       }
     }
 

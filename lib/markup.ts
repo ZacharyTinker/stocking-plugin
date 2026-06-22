@@ -1,29 +1,70 @@
-import { MarkedSegment } from "@/types/scripture";
-import { TokenizationOptions } from "@/types/scripture";
+import { MarkedSegment, TokenizationOptions } from "@/types/scripture";
 
-function normalizeForLookup(token: string, opts: TokenizationOptions): string {
-  let t = token.toLowerCase();
-  if (opts.contractionsAsSingle) {
-    t = t.replace(/[^a-z0-9'-]/g, "");
-  } else {
-    t = t.replace(/[^a-z0-9]/g, "");
-  }
-  if (!opts.includePossessives) {
-    t = t.replace(/'s$/, "");
-  }
+function normalizeForLookup(word: string, opts: TokenizationOptions): string {
+  let t = word.toLowerCase();
+  t = opts.contractionsAsSingle ? t.replace(/[^a-z0-9'-]/g, "") : t.replace(/[^a-z0-9]/g, "");
+  if (!opts.includePossessives) t = t.replace(/'s$/, "");
   return t;
 }
 
-function getWordTokens(text: string, opts: TokenizationOptions): string[] {
-  return text.split(/\s+/).filter(Boolean);
+/**
+ * Split leading and trailing punctuation off a raw display token, leaving the alphabetic core.
+ *   "cutting,"  → { lead: "",   core: "cutting", trail: "," }
+ *   ""No"       → { lead: "“", core: "No",  trail: "" }
+ *   "clubs?"    → { lead: "",   core: "clubs",   trail: "?" }
+ *   "don't,"    → { lead: "",   core: "don't",   trail: "," }
+ */
+function splitPunct(raw: string): { lead: string; core: string; trail: string } {
+  const first = raw.search(/[a-zA-Z0-9]/);
+  if (first < 0) return { lead: raw, core: "", trail: "" };
+  let last = -1;
+  for (let i = raw.length - 1; i >= 0; i--) {
+    if (/[a-zA-Z0-9]/.test(raw[i])) { last = i; break; }
+  }
+  return { lead: raw.slice(0, first), core: raw.slice(first, last + 1), trail: raw.slice(last + 1) };
 }
 
 /**
- * Splits verse text into segments with unique-word and unique-phrase flags.
- * Strategy:
- * 1. Find all phrase spans (3-word first, then 2-word) that are unique.
- * 2. Mark words as unique if not already inside a phrase span.
- * 3. Emit segments in order.
+ * Sub-split a whitespace token on em/en dashes (U+2013, U+2014) only when
+ * alphabetic characters appear on both sides of the dash.
+ * The dash is appended to the *preceding* word's trail so that plain
+ * (unhighlighted) compounds render without extra spaces:
+ *   "hour—when"  → [{ core:"hour", trail:"—" }, { core:"when", trail:"" }]
+ */
+type SubWord = { lead: string; core: string; trail: string };
+
+function splitOnDashes(rawToken: string): SubWord[] {
+  if (!/[a-zA-Z0-9][–—][a-zA-Z0-9]/.test(rawToken)) {
+    return [splitPunct(rawToken)];
+  }
+
+  const parts = rawToken.split(/([–—]+)/);
+  // parts alternates: word, dash, word, dash, word …
+  const wordParts: string[] = [];
+  const dashes: string[] = [];
+  for (let i = 0; i < parts.length; i++) {
+    if (i % 2 === 0) wordParts.push(parts[i]);
+    else dashes.push(parts[i]);
+  }
+
+  return wordParts
+    .map((part, i) => {
+      const { lead, core, trail } = splitPunct(part);
+      return { lead, core, trail: trail + (dashes[i] ?? "") };
+    })
+    .filter((sw) => sw.core); // drop empty word-parts (e.g. leading dash in "—word")
+}
+
+/**
+ * Splits verse text into MarkedSegment[] with unique-word/phrase flags.
+ *
+ * Key design decisions:
+ * - Leading/trailing punctuation around a highlighted word is emitted as
+ *   separate unstyled segments so only the alphabetic core is highlighted.
+ * - Em/en dashes inside a whitespace token are treated as word separators;
+ *   each word on either side is looked up independently.
+ * - The trailing space is excluded from styled spans; `noSpaceAfter` marks
+ *   sub-segments within a single whitespace token that must not add a space.
  */
 export function markupVerse(
   text: string,
@@ -33,72 +74,96 @@ export function markupVerse(
   includeUniqueWords: boolean,
   includeUniquePhrases: boolean
 ): MarkedSegment[] {
-  const rawWords = getWordTokens(text, opts);
-  if (rawWords.length === 0) return [{ text, isUniqueWord: false, isUniquePhrase: false }];
+  const rawTokens = text.split(/\s+/).filter(Boolean);
+  if (rawTokens.length === 0) return [{ text, isUniqueWord: false, isUniquePhrase: false }];
 
-  const normalized = rawWords.map((w) => normalizeForLookup(w, opts));
-  const n = rawWords.length;
+  // ── 1. Build word-atom list ──────────────────────────────────────────────
+  // Each whitespace token may expand into multiple sub-words (via em-dash splits).
+  // isLastInGroup = final sub-word for its whitespace token → gets a trailing space.
+  type Atom = SubWord & { norm: string; isLastInGroup: boolean };
+  const atoms: Atom[] = [];
 
-  // phraseSpans[i] = length (2 or 3) if a unique phrase starts at index i, else 0
-  // We prefer longer phrases.
-  const phraseSpans: number[] = new Array(n).fill(0);
+  for (const rawToken of rawTokens) {
+    const subs = splitOnDashes(rawToken);
+    subs.forEach((sw, si) => {
+      atoms.push({ ...sw, norm: sw.core ? normalizeForLookup(sw.core, opts) : "", isLastInGroup: si === subs.length - 1 });
+    });
+  }
+
+  const n = atoms.length;
+  const norms = atoms.map((a) => a.norm);
+
+  // ── 2. Phrase detection over atom indices ────────────────────────────────
+  const phraseSpans = new Array<number>(n).fill(0);
 
   if (includeUniquePhrases) {
-    // 3-word phrases first
-    if (opts.analyzeThreeWordPhrases ?? true) {
+    if (opts.analyzeThreeWordPhrases) {
       for (let i = 0; i + 2 < n; i++) {
-        const p = `${normalized[i]} ${normalized[i + 1]} ${normalized[i + 2]}`;
-        if (uniquePhrases.has(p)) {
-          // mark all three positions, but track span start
-          if (phraseSpans[i] < 3) phraseSpans[i] = 3;
-        }
+        if (!norms[i] || !norms[i + 1] || !norms[i + 2]) continue;
+        const p = `${norms[i]} ${norms[i + 1]} ${norms[i + 2]}`;
+        if (uniquePhrases.has(p) && phraseSpans[i] < 3) phraseSpans[i] = 3;
       }
     }
-    // 2-word phrases, only where not already covered by a 3-word span
-    if (opts.analyzeTwoWordPhrases ?? true) {
+    if (opts.analyzeTwoWordPhrases) {
       for (let i = 0; i + 1 < n; i++) {
-        const p = `${normalized[i]} ${normalized[i + 1]}`;
-        if (uniquePhrases.has(p) && phraseSpans[i] === 0) {
-          phraseSpans[i] = 2;
-        }
+        if (!norms[i] || !norms[i + 1]) continue;
+        const p = `${norms[i]} ${norms[i + 1]}`;
+        if (uniquePhrases.has(p) && phraseSpans[i] === 0) phraseSpans[i] = 2;
       }
     }
   }
 
+  // ── 3. Emit segments ─────────────────────────────────────────────────────
   const segments: MarkedSegment[] = [];
+  function add(seg: MarkedSegment) { if (seg.text) segments.push(seg); }
+
   let i = 0;
   while (i < n) {
     const spanLen = phraseSpans[i];
-    if (spanLen > 0) {
-      const phraseWords = rawWords.slice(i, i + spanLen).join(" ");
-      segments.push({ text: phraseWords, isUniqueWord: false, isUniquePhrase: true, phraseLen: spanLen as 2 | 3 });
+
+    if (spanLen > 0 && includeUniquePhrases) {
+      // ── Phrase span ──────────────────────────────────────────────────────
+      const first = atoms[i];
+      const last = atoms[i + spanLen - 1];
+
+      const hasUniqueWord =
+        includeUniqueWords && norms.slice(i, i + spanLen).some((nw) => nw && uniqueWords.has(nw));
+
+      // Build the highlighted text: join cores with their inter-word content.
+      // Each atom's trail (which may contain a dash) is appended before the
+      // next atom; cross-group boundaries get a space.
+      let phraseText = first.core;
+      for (let j = i + 1; j < i + spanLen; j++) {
+        const prev = atoms[j - 1];
+        phraseText += prev.trail;
+        if (prev.isLastInGroup) phraseText += " ";
+        phraseText += atoms[j].lead + atoms[j].core;
+      }
+
+      if (first.lead) add({ text: first.lead, isUniqueWord: false, isUniquePhrase: false, noSpaceAfter: true });
+      add({ text: phraseText, isUniqueWord: hasUniqueWord, isUniquePhrase: true, phraseLen: spanLen as 2 | 3, noSpaceAfter: !!last.trail || !last.isLastInGroup });
+      if (last.trail) add({ text: last.trail, isUniqueWord: false, isUniquePhrase: false, noSpaceAfter: !last.isLastInGroup });
+
       i += spanLen;
     } else {
-      const isUnique = includeUniqueWords && uniqueWords.has(normalized[i]);
-      segments.push({ text: rawWords[i], isUniqueWord: isUnique, isUniquePhrase: false });
+      // ── Single word ──────────────────────────────────────────────────────
+      const atom = atoms[i];
+      const isUnique = includeUniqueWords && !!atom.norm && uniqueWords.has(atom.norm);
+      const noSpaceAfter = !atom.isLastInGroup;
+
+      if (isUnique && atom.core) {
+        if (atom.lead) add({ text: atom.lead, isUniqueWord: false, isUniquePhrase: false, noSpaceAfter: true });
+        add({ text: atom.core, isUniqueWord: true, isUniquePhrase: false, noSpaceAfter: !!atom.trail || noSpaceAfter });
+        if (atom.trail) add({ text: atom.trail, isUniqueWord: false, isUniquePhrase: false, noSpaceAfter });
+      } else {
+        // Plain: emit the whole raw token content as one unstyled segment
+        const full = atom.lead + atom.core + atom.trail;
+        add({ text: full, isUniqueWord: false, isUniquePhrase: false, noSpaceAfter });
+      }
+
       i++;
     }
   }
 
-  // Re-join with spaces, preserving them
-  // But we also need to check: is a word inside a phrase AND unique?
-  // For words inside phrases, check each word token.
-  const finalSegments: MarkedSegment[] = [];
-  for (const seg of segments) {
-    if (seg.isUniquePhrase && includeUniqueWords) {
-      // Each word in phrase may also be unique
-      const words = seg.text.split(" ");
-      const normed = words.map((w) => normalizeForLookup(w, opts));
-      finalSegments.push({
-        text: seg.text,
-        isUniqueWord: normed.some((nw) => uniqueWords.has(nw)),
-        isUniquePhrase: true,
-        phraseLen: seg.phraseLen,
-      });
-    } else {
-      finalSegments.push(seg);
-    }
-  }
-
-  return finalSegments;
+  return segments;
 }

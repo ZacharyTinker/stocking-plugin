@@ -77,9 +77,10 @@ function segmentsToRuns(
     const basePt = Math.round(baseSizePt * 0.75);
     const sizePt = basePt + Math.round(s.sizeBoost * 0.75);
 
+    const space = seg.noSpaceAfter ? "" : " ";
     runs.push(
       new TextRun({
-        text: seg.text + " ",
+        text: seg.text + space,
         bold: s.bold,
         italics: s.italic,
         underline: s.underline ? {} : undefined,

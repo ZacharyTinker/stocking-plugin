@@ -36,7 +36,7 @@ export default function ExportButtons({ result, tokenOpts, displayOpts, keyVerse
     URL.revokeObjectURL(url);
   }
 
-  function handleHTML() {
+  async function handleHTML() {
     const { wordStyle, phrase2Style, phrase3Style, fontSize,
             bookTitleStyle, chapterHeadingStyle, sectionHeadingStyle, verseNumberStyle,
             chapterPageBreak } = displayOpts;
@@ -97,14 +97,44 @@ export default function ExportButtons({ result, tokenOpts, displayOpts, keyVerse
       let out = verseNumberHTML(verse);
       for (const seg of segments) {
         const inlineStyle = segStyle(seg);
+        const space = seg.noSpaceAfter ? "" : " ";
         if (inlineStyle) {
-          out += `<span style="${inlineStyle}">${esc(seg.text)} </span>`;
+          // Space outside the styled span so punctuation/spaces aren't highlighted
+          out += `<span style="${inlineStyle}">${esc(seg.text)}</span>${space}`;
         } else {
-          out += esc(seg.text) + " ";
+          out += esc(seg.text) + space;
         }
       }
       return out;
     }
+
+    // Embed OpenDyslexic as base64 @font-face rules so the exported HTML is self-contained
+    async function buildFontEmbed(): Promise<string> {
+      if (!displayOpts.fontFamily.includes("OpenDyslexic")) return "";
+      const variants = [
+        { weight: "normal", style: "normal",  file: "/fonts/OpenDyslexic-Regular.otf" },
+        { weight: "bold",   style: "normal",  file: "/fonts/OpenDyslexic-Bold.otf" },
+        { weight: "normal", style: "italic",  file: "/fonts/OpenDyslexic-Italic.otf" },
+        { weight: "bold",   style: "italic",  file: "/fonts/OpenDyslexic-BoldItalic.otf" },
+      ];
+      let css = "";
+      for (const v of variants) {
+        try {
+          const buf = await fetch(v.file).then((r) => r.arrayBuffer());
+          const bytes = new Uint8Array(buf);
+          const CHUNK = 8192;
+          const chunks: string[] = [];
+          for (let j = 0; j < bytes.length; j += CHUNK) {
+            chunks.push(String.fromCharCode(...bytes.subarray(j, j + CHUNK)));
+          }
+          const b64 = btoa(chunks.join(""));
+          css += `@font-face{font-family:"OpenDyslexic";src:url("data:font/opentype;base64,${b64}") format("opentype");font-weight:${v.weight};font-style:${v.style};font-display:swap;}\n`;
+        } catch { /* skip if unavailable */ }
+      }
+      return css;
+    }
+
+    const fontEmbed = await buildFontEmbed();
 
     // Legend, ordered by rank, so readers understand the club hierarchy
     let legendHtml = "";
@@ -131,7 +161,7 @@ export default function ExportButtons({ result, tokenOpts, displayOpts, keyVerse
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>${book} - Bible Quizzing Markup</title>
 <style>
-  body { font-family: ${displayOpts.fontFamily}; font-size: ${fontSize}px; line-height: ${displayOpts.lineSpacing}; max-width: 800px; margin: 0 auto; padding: 2rem; }
+${fontEmbed}  body { font-family: ${displayOpts.fontFamily}; font-size: ${fontSize}px; line-height: ${displayOpts.lineSpacing}; max-width: 800px; margin: 0 auto; padding: 2rem; }
   h1.book-title { margin-top: 2rem; ${elementAttr(bookTitleStyle)} }
   h2.chapter-heading { margin-top: 1.5rem; ${elementAttr(chapterHeadingStyle)}${chapterPageBreak ? " page-break-before:always;" : ""} }
   h3.section-heading { margin-top: 1rem; ${elementAttr(sectionHeadingStyle)} }

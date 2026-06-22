@@ -1,5 +1,6 @@
 "use client";
 
+import React from "react";
 import { Verse, TokenizationOptions, DisplayOptions, AnalysisResult, MarkupStyle, ElementStyle, ClubStyle } from "@/types/scripture";
 import { markupVerse } from "@/lib/markup";
 import { IndicatorDemo } from "@/components/ClubStylePicker";
@@ -97,13 +98,18 @@ export default function Preview({ result, tokenOpts, displayOpts, keyVerses, clu
             const phraseStyle = seg.phraseLen === 3 ? displayOpts.phrase3Style : displayOpts.phrase2Style;
             style = { ...style, ...markupStyleToCSS(phraseStyle, displayOpts.fontSize) };
           }
-          if (seg.isUniqueWord)   style = { ...style, ...markupStyleToCSS(displayOpts.wordStyle, displayOpts.fontSize) };
+          if (seg.isUniqueWord) style = { ...style, ...markupStyleToCSS(displayOpts.wordStyle, displayOpts.fontSize) };
           const cls = [seg.isUniqueWord ? "unique-word" : "", seg.isUniquePhrase ? "unique-phrase" : ""].filter(Boolean).join(" ");
-          return (
-            <span key={i} className={cls || undefined} style={Object.keys(style).length ? style : undefined}>
-              {seg.text}{" "}
-            </span>
-          );
+          const space = seg.noSpaceAfter ? "" : " ";
+          const hasStyle = Object.keys(style).length > 0 || cls;
+          if (hasStyle) {
+            return (
+              <React.Fragment key={i}>
+                <span className={cls || undefined} style={Object.keys(style).length ? style : undefined}>{seg.text}</span>{space}
+              </React.Fragment>
+            );
+          }
+          return <React.Fragment key={i}>{seg.text}{space}</React.Fragment>;
         })}
       </span>
     );

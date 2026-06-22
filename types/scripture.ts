@@ -113,4 +113,6 @@ export interface MarkedSegment {
   isUniquePhrase: boolean;
   /** Word count of the phrase span (2 or 3) when isUniquePhrase is true */
   phraseLen?: 2 | 3;
+  /** When true, do not add a trailing space after this segment (used for mid-token sub-segments) */
+  noSpaceAfter?: boolean;
 }

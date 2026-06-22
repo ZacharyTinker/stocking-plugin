@@ -19,14 +19,17 @@ function tokenize(text: string, opts: TokenizationOptions): string[] {
   const rawTokens = text.split(/\s+/);
   const tokens: string[] = [];
   for (const raw of rawTokens) {
-    if (opts.hyphenatedWordsAsSingle) {
-      const t = normalizeToken(raw, opts);
-      if (t) tokens.push(t);
-    } else {
-      const parts = raw.split("-");
-      for (const p of parts) {
-        const t = normalizeToken(p, opts);
+    // Em/en dashes are always word-separators (typographic, not word-connectors like hyphens)
+    const emDashParts = raw.split(/[–—]/);
+    for (const emPart of emDashParts) {
+      if (opts.hyphenatedWordsAsSingle) {
+        const t = normalizeToken(emPart, opts);
         if (t) tokens.push(t);
+      } else {
+        for (const p of emPart.split("-")) {
+          const t = normalizeToken(p, opts);
+          if (t) tokens.push(t);
+        }
       }
     }
   }
