@@ -38,6 +38,7 @@ const DEFAULT_DISPLAY_OPTS: DisplayOptions = {
   sectionHeadingStyle: { ...DEFAULT_ELEMENT, bold: true, italic: true, fontSize: 14 },
   verseNumberStyle:    { ...DEFAULT_ELEMENT, color: "#888888", fontSize: 10, superscript: true },
   chapterPageBreak: false,
+  verseLayout: "lines",
 };
 
 type Tab = "input" | "preview";

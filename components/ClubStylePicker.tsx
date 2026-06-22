@@ -95,7 +95,7 @@ export function IndicatorDemo({
   clubStyle,
   verseNumberStyle,
 }: {
-  verseNum: number;
+  verseNum: number | string;
   clubStyle: ClubStyle;
   verseNumberStyle?: ElementStyle;
 }) {

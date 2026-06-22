@@ -58,6 +58,8 @@ export interface DisplayOptions {
   verseNumberStyle: ElementStyle;
   /** Insert a page break before each chapter heading in exports */
   chapterPageBreak: boolean;
+  /** "lines" = each verse on its own line; "paragraph" = verses flow together as prose */
+  verseLayout: "lines" | "paragraph";
 }
 
 export interface AnalysisResult {
@@ -73,13 +75,24 @@ export interface ClubStyle {
   /** "filled" = solid circle, "outline" = ring only, "dot" = small bullet, "none" = hidden */
   indicator: "filled" | "outline" | "dot" | "none";
   color: string;
+  /** Ordering rank — lower ranks are nested inside (subsets of) higher ranks.
+   *  Used to sort clubs in the legend so readers understand the hierarchy. */
+  rank: number;
 }
 
 export const DEFAULT_CLUB_STYLES: Record<string, ClubStyle> = {
-  "Club 75":  { indicator: "dot",     color: "#94a3b8" },
-  "Club 150": { indicator: "filled",  color: "#2563eb" },
-  "Club 300": { indicator: "outline", color: "#2563eb" },
+  "Club 75":  { indicator: "dot",     color: "#94a3b8", rank: 75 },
+  "Club 150": { indicator: "filled",  color: "#2563eb", rank: 150 },
+  "Club 300": { indicator: "outline", color: "#2563eb", rank: 300 },
 };
+
+/** Infer a default rank for a club from any digits in its name (e.g. "Club 150" → 150).
+ *  Clubs with no digits sort after numbered clubs, in the order discovered. */
+export function inferClubRank(clubName: string, fallbackIndex = 0): number {
+  const digits = clubName.replace(/[^0-9]/g, "");
+  if (digits) return parseInt(digits, 10);
+  return 100000 + fallbackIndex;
+}
 
 export const CLUB_COLOR_PALETTE = [
   "#2563eb", "#16a34a", "#dc2626", "#d97706", "#7c3aed", "#0891b2",

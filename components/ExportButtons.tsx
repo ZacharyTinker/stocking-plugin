@@ -71,6 +71,58 @@ export default function ExportButtons({ result, tokenOpts, displayOpts, keyVerse
       return parts.filter(Boolean).join(";");
     }
 
+    const paragraphMode = displayOpts.verseLayout === "paragraph";
+
+    // Render the verse-number indicator (shared by both layouts)
+    function verseNumberHTML(verse: typeof verses[number]): string {
+      const verseId = `${verse.book} ${verse.chapter}:${verse.verse}`;
+      const club = keyVerses?.get(verseId);
+      const cs = club ? clubStyles?.[club] : undefined;
+      const vnTag = superscript ? "sup" : "span";
+      if (cs && cs.indicator !== "none") {
+        if (cs.indicator === "dot") {
+          const vnSize = verseNumberStyle.fontSize;
+          const vnColor = verseNumberStyle.color || "#888888";
+          const va = superscript ? "vertical-align:super;" : "";
+          return `<span style="color:${cs.color};font-size:${vnSize}px;${va}margin-right:0.1em">•</span><span style="color:${vnColor};font-size:${vnSize}px;${va}">${verse.verse}</span> `;
+        }
+        const bg = cs.indicator === "filled" ? `background:${cs.color};color:white` : `border:1.5px solid ${cs.color};color:#555`;
+        return `<span style="display:inline-flex;align-items:center;justify-content:center;min-width:1.6em;height:1.6em;border-radius:50%;${bg};font-size:${verseNumberStyle.fontSize}px;${superscript ? "vertical-align:super;" : ""}line-height:1;margin-right:0.2em">${verse.verse}</span> `;
+      }
+      return `<${vnTag} class="verse-number">${verse.verse}</${vnTag}>`;
+    }
+
+    function verseInnerHTML(verse: typeof verses[number]): string {
+      const segments = markupVerse(verse.text, uniqueWords, uniquePhrases, tokenOpts, tokenOpts.includeUniqueWords, tokenOpts.includeUniquePhrases);
+      let out = verseNumberHTML(verse);
+      for (const seg of segments) {
+        const inlineStyle = segStyle(seg);
+        if (inlineStyle) {
+          out += `<span style="${inlineStyle}">${esc(seg.text)} </span>`;
+        } else {
+          out += esc(seg.text) + " ";
+        }
+      }
+      return out;
+    }
+
+    // Legend, ordered by rank, so readers understand the club hierarchy
+    let legendHtml = "";
+    if (clubStyles && Object.keys(clubStyles).length > 0 && keyVerses && keyVerses.size > 0) {
+      const ordered = Object.entries(clubStyles).sort(([, a], [, b]) => a.rank - b.rank);
+      const items = ordered.map(([club, cs]) => {
+        let ind = "";
+        if (cs.indicator === "dot") {
+          ind = `<span style="color:${cs.color};font-size:${verseNumberStyle.fontSize}px;margin-right:0.2em">•</span>`;
+        } else if (cs.indicator !== "none") {
+          const bg = cs.indicator === "filled" ? `background:${cs.color};color:white` : `border:1.5px solid ${cs.color};color:#555`;
+          ind = `<span style="display:inline-flex;align-items:center;justify-content:center;min-width:1.6em;height:1.6em;border-radius:50%;${bg};font-size:${verseNumberStyle.fontSize}px;line-height:1;margin-right:0.2em"></span>`;
+        }
+        return `<span style="display:inline-flex;align-items:center;gap:0.25em;margin-right:1em">${ind}${esc(club)}</span>`;
+      }).join("");
+      legendHtml = `<div class="club-legend"><span style="color:#888;margin-right:0.5em">Key:</span>${items}</div>\n`;
+    }
+
     const book = verses[0]?.book ?? "Scripture";
     let html = `<!DOCTYPE html>
 <html lang="en">
@@ -85,59 +137,44 @@ export default function ExportButtons({ result, tokenOpts, displayOpts, keyVerse
   h3.section-heading { margin-top: 1rem; ${elementAttr(sectionHeadingStyle)} }
   .verse-number { ${elementAttr(verseNumberStyle)} margin-right: 0.25em;${superscript ? " vertical-align: super;" : ""} }
   .verse-line { margin: 0.2em 0; }
+  .verse-paragraph { margin: 0.4em 0; text-align: justify; }
+  .club-legend { display: flex; flex-wrap: wrap; align-items: center; gap: 0.25em; border: 1px solid #ddd; background: #f9fafb; border-radius: 4px; padding: 0.5em; margin-bottom: 1em; font-size: ${Math.round(fontSize * 0.85)}px; }
 </style>
 </head>
-<body>\n`;
+<body>
+${legendHtml}`;
 
     let currentBook = "";
     let currentChapter = -1;
     let lastHeading = "";
+    let paraOpen = false;
+    function closePara() { if (paraOpen) { html += `</p>\n`; paraOpen = false; } }
 
     for (const verse of verses) {
       if (verse.book !== currentBook) {
+        closePara();
         currentBook = verse.book;
         html += `<h1 class="book-title">${esc(verse.book)}</h1>\n`;
       }
       if (verse.chapter !== currentChapter) {
+        closePara();
         currentChapter = verse.chapter;
         html += `<h2 class="chapter-heading">Chapter ${verse.chapter}</h2>\n`;
       }
       if (displayOpts.includeSectionHeadings && verse.sectionHeading && verse.sectionHeading !== lastHeading) {
+        closePara();
         lastHeading = verse.sectionHeading;
         html += `<h3 class="section-heading">${esc(verse.sectionHeading)}</h3>\n`;
       }
 
-      const segments = markupVerse(verse.text, uniqueWords, uniquePhrases, tokenOpts, tokenOpts.includeUniqueWords, tokenOpts.includeUniquePhrases);
-      const verseId = `${verse.book} ${verse.chapter}:${verse.verse}`;
-      const club = keyVerses?.get(verseId);
-      const cs = club ? clubStyles?.[club] : undefined;
-
-      const vnTag = superscript ? "sup" : "span";
-      let verseNumHtml: string;
-      if (cs && cs.indicator !== "none") {
-        if (cs.indicator === "dot") {
-          const vnSize = verseNumberStyle.fontSize;
-          const vnColor = verseNumberStyle.color || "#888888";
-          const va = superscript ? "vertical-align:super;" : "";
-          verseNumHtml = `<span style="color:${cs.color};font-size:${vnSize}px;${va}margin-right:0.1em">•</span><span style="color:${vnColor};font-size:${vnSize}px;${va}">${verse.verse}</span>`;
-        } else {
-          const bg = cs.indicator === "filled" ? `background:${cs.color};color:white` : `border:1.5px solid ${cs.color};color:#555`;
-          verseNumHtml = `<span style="display:inline-flex;align-items:center;justify-content:center;min-width:1.6em;height:1.6em;border-radius:50%;${bg};font-size:${verseNumberStyle.fontSize}px;${superscript ? "vertical-align:super;" : ""}line-height:1;margin-right:0.2em">${verse.verse}</span>`;
-        }
+      if (paragraphMode) {
+        if (!paraOpen) { html += `<p class="verse-paragraph">`; paraOpen = true; }
+        html += verseInnerHTML(verse);
       } else {
-        verseNumHtml = `<${vnTag} class="verse-number">${verse.verse}</${vnTag}>`;
+        html += `<p class="verse-line">${verseInnerHTML(verse)}</p>\n`;
       }
-      html += `<p class="verse-line">${verseNumHtml}`;
-      for (const seg of segments) {
-        const inlineStyle = segStyle(seg);
-        if (inlineStyle) {
-          html += `<span style="${inlineStyle}">${esc(seg.text)} </span>`;
-        } else {
-          html += esc(seg.text) + " ";
-        }
-      }
-      html += `</p>\n`;
     }
+    closePara();
 
     html += `</body></html>`;
 

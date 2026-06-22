@@ -44,39 +44,22 @@ export default function Preview({ result, tokenOpts, displayOpts, keyVerses, clu
   const elements: React.ReactNode[] = [];
 
   const { bookTitleStyle, chapterHeadingStyle, sectionHeadingStyle, verseNumberStyle } = displayOpts;
+  const paragraphMode = displayOpts.verseLayout === "paragraph";
 
-  for (const verse of verses) {
-    if (verse.book !== currentBook) {
-      currentBook = verse.book;
-      elements.push(
-        <h1 key={`book-${verse.book}`} className="mt-8 mb-2 book-title" style={elementStyleToCSS(bookTitleStyle)}>
-          {verse.book}
-        </h1>
-      );
-    }
+  // Buffer of inline verse nodes for the current paragraph (paragraph mode only)
+  let paraBuffer: React.ReactNode[] = [];
+  let paraKey = "";
+  function flushParagraph() {
+    if (paraBuffer.length === 0) return;
+    elements.push(
+      <p key={`para-${paraKey}`} className="verse-paragraph my-1" style={{ textAlign: "justify" }}>
+        {paraBuffer}
+      </p>
+    );
+    paraBuffer = [];
+  }
 
-    if (verse.chapter !== currentChapter) {
-      currentChapter = verse.chapter;
-      elements.push(
-        <h2 key={`ch-${verse.book}-${verse.chapter}`} className="mt-6 mb-1 chapter-heading" style={elementStyleToCSS(chapterHeadingStyle)}>
-          Chapter {verse.chapter}
-        </h2>
-      );
-    }
-
-    if (
-      displayOpts.includeSectionHeadings &&
-      verse.sectionHeading &&
-      verse.sectionHeading !== lastHeading
-    ) {
-      lastHeading = verse.sectionHeading;
-      elements.push(
-        <h3 key={`sec-${verse.book}-${verse.chapter}-${verse.verse}`} className="mt-4 mb-0.5 section-heading" style={elementStyleToCSS(sectionHeadingStyle)}>
-          {verse.sectionHeading}
-        </h3>
-      );
-    }
-
+  function renderVerseInline(verse: Verse): React.ReactNode {
     const segments = markupVerse(
       verse.text, uniqueWords, uniquePhrases, tokenOpts,
       tokenOpts.includeUniqueWords, tokenOpts.includeUniquePhrases
@@ -86,8 +69,8 @@ export default function Preview({ result, tokenOpts, displayOpts, keyVerses, clu
     const club = keyVerses?.get(verseId);
     const clubStyle = club ? clubStyles?.[club] : undefined;
 
-    elements.push(
-      <p key={`v-${verse.book}-${verse.chapter}-${verse.verse}`} className="verse-line my-0.5">
+    return (
+      <span key={`v-${verseId}`}>
         {/* Verse number: plain or with club indicator */}
         {clubStyle && clubStyle.indicator !== "none" ? (
           <span className="select-none" style={{ marginRight: "0.25em" }}>
@@ -122,9 +105,75 @@ export default function Preview({ result, tokenOpts, displayOpts, keyVerses, clu
             </span>
           );
         })}
-      </p>
+      </span>
     );
   }
+
+  // Optional legend, ordered by rank, so the reader understands the club hierarchy
+  if (clubStyles && Object.keys(clubStyles).length > 0 && keyVerses && keyVerses.size > 0) {
+    const ordered = Object.entries(clubStyles).sort(([, a], [, b]) => a.rank - b.rank);
+    elements.push(
+      <div key="club-legend" className="club-legend mb-4 flex flex-wrap gap-4 items-center text-sm border rounded p-2 bg-gray-50">
+        <span className="text-gray-500 font-medium">Key:</span>
+        {ordered.map(([club, style]) => (
+          <span key={club} className="inline-flex items-center gap-1">
+            {style.indicator !== "none" && (
+              <IndicatorDemo verseNum={" "} clubStyle={style} verseNumberStyle={{ ...verseNumberStyle, superscript: false }} />
+            )}
+            <span>{club}</span>
+          </span>
+        ))}
+      </div>
+    );
+  }
+
+  for (const verse of verses) {
+    if (verse.book !== currentBook) {
+      flushParagraph();
+      currentBook = verse.book;
+      elements.push(
+        <h1 key={`book-${verse.book}`} className="mt-8 mb-2 book-title" style={elementStyleToCSS(bookTitleStyle)}>
+          {verse.book}
+        </h1>
+      );
+    }
+
+    if (verse.chapter !== currentChapter) {
+      flushParagraph();
+      currentChapter = verse.chapter;
+      elements.push(
+        <h2 key={`ch-${verse.book}-${verse.chapter}`} className="mt-6 mb-1 chapter-heading" style={elementStyleToCSS(chapterHeadingStyle)}>
+          Chapter {verse.chapter}
+        </h2>
+      );
+    }
+
+    if (
+      displayOpts.includeSectionHeadings &&
+      verse.sectionHeading &&
+      verse.sectionHeading !== lastHeading
+    ) {
+      flushParagraph();
+      lastHeading = verse.sectionHeading;
+      elements.push(
+        <h3 key={`sec-${verse.book}-${verse.chapter}-${verse.verse}`} className="mt-4 mb-0.5 section-heading" style={elementStyleToCSS(sectionHeadingStyle)}>
+          {verse.sectionHeading}
+        </h3>
+      );
+    }
+
+    if (paragraphMode) {
+      if (paraBuffer.length === 0) paraKey = `${verse.book}-${verse.chapter}-${verse.verse}`;
+      paraBuffer.push(renderVerseInline(verse));
+    } else {
+      elements.push(
+        <p key={`v-${verse.book}-${verse.chapter}-${verse.verse}`} className="verse-line my-0.5">
+          {renderVerseInline(verse)}
+        </p>
+      );
+    }
+  }
+  flushParagraph();
 
   return (
     <div

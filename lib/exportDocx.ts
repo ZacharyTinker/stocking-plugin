@@ -121,17 +121,42 @@ export async function exportToDocx(
     includeSectionHeadings,
     wordStyle, phrase2Style, phrase3Style, fontSize,
     bookTitleStyle, chapterHeadingStyle, sectionHeadingStyle, verseNumberStyle,
-    chapterPageBreak,
+    chapterPageBreak, verseLayout,
   } = displayOpts;
+  const paragraphMode = verseLayout === "paragraph";
 
   const paragraphs: Paragraph[] = [];
+
+  // Legend, ordered by rank, so readers understand the club hierarchy
+  if (clubStyles && Object.keys(clubStyles).length > 0 && keyVerses && keyVerses.size > 0) {
+    const ordered = Object.entries(clubStyles).sort(([, a], [, b]) => a.rank - b.rank);
+    const legendRuns: TextRun[] = [
+      new TextRun({ text: "Key:  ", color: "888888", size: Math.round(fontSize * 0.75) * 2 }),
+    ];
+    for (const [club, cs] of ordered) {
+      const char = cs.indicator === "filled" ? "●" : cs.indicator === "outline" ? "○" : cs.indicator === "dot" ? "•" : "";
+      const sz = Math.round(fontSize * 0.75) * 2;
+      if (char) legendRuns.push(new TextRun({ text: char + " ", color: cs.color.replace("#", "") || "888888", size: sz }));
+      legendRuns.push(new TextRun({ text: `${club}    `, size: sz }));
+    }
+    paragraphs.push(new Paragraph({ children: legendRuns, spacing: { after: 200 } }));
+  }
 
   let currentBook = "";
   let currentChapter = -1;
   let lastHeading = "";
 
+  // Accumulator for paragraph-mode runs
+  let paraRuns: TextRun[] = [];
+  function flushParaRuns() {
+    if (paraRuns.length === 0) return;
+    paragraphs.push(new Paragraph({ children: paraRuns, spacing: { after: 120 } }));
+    paraRuns = [];
+  }
+
   for (const verse of verses) {
     if (verse.book !== currentBook) {
+      flushParaRuns();
       currentBook = verse.book;
       paragraphs.push(
         new Paragraph({
@@ -142,6 +167,7 @@ export async function exportToDocx(
     }
 
     if (verse.chapter !== currentChapter) {
+      flushParaRuns();
       currentChapter = verse.chapter;
       paragraphs.push(
         new Paragraph({
@@ -153,6 +179,7 @@ export async function exportToDocx(
     }
 
     if (includeSectionHeadings && verse.sectionHeading && verse.sectionHeading !== lastHeading) {
+      flushParaRuns();
       lastHeading = verse.sectionHeading;
       paragraphs.push(
         new Paragraph({
@@ -175,13 +202,15 @@ export async function exportToDocx(
     const club = keyVerses?.get(verseId);
     const clubStyle = club ? clubStyles?.[club] : undefined;
 
-    paragraphs.push(
-      new Paragraph({
-        children: segmentsToRuns(verse.verse, segments, wordStyle, phrase2Style, phrase3Style, fontSize, verseNumberStyle, clubStyle),
-        spacing: { after: 60 },
-      })
-    );
+    const runs = segmentsToRuns(verse.verse, segments, wordStyle, phrase2Style, phrase3Style, fontSize, verseNumberStyle, clubStyle);
+
+    if (paragraphMode) {
+      paraRuns.push(...runs);
+    } else {
+      paragraphs.push(new Paragraph({ children: runs, spacing: { after: 60 } }));
+    }
   }
+  flushParaRuns();
 
   const doc = new Document({
     sections: [{ children: paragraphs }],

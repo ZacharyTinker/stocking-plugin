@@ -72,7 +72,23 @@ export default function SettingsPanel({ tokenOpts, displayOpts, onTokenChange, o
 
       <section>
         <h3 className="font-semibold text-gray-700 mb-2">Layout</h3>
-        <div className="space-y-1">
+        <div className="space-y-2">
+          <div>
+            <span className="block mb-1 text-gray-600">Verse layout</span>
+            <div className="flex gap-1 border rounded-lg p-1 w-fit bg-gray-100">
+              {([["lines", "Verse per line"], ["paragraph", "Paragraph"]] as const).map(([mode, label]) => (
+                <button
+                  key={mode}
+                  onClick={() => onDisplayChange({ ...displayOpts, verseLayout: mode })}
+                  className={`px-3 py-1 rounded text-xs font-medium transition-colors ${
+                    displayOpts.verseLayout === mode ? "bg-white shadow text-gray-900" : "text-gray-500 hover:text-gray-700"
+                  }`}
+                >
+                  {label}
+                </button>
+              ))}
+            </div>
+          </div>
           <Checkbox
             label="Show section headings"
             checked={displayOpts.includeSectionHeadings}
@@ -157,20 +173,60 @@ export default function SettingsPanel({ tokenOpts, displayOpts, onTokenChange, o
       {Object.keys(clubStyles).length > 0 && (
         <section>
           <h3 className="font-semibold text-gray-700 mb-2">Key Verse Indicators</h3>
-          {Object.entries(clubStyles)
-            .sort(([a], [b]) => a.localeCompare(b))
-            .map(([club, style]) => {
+          <p className="text-xs text-gray-500 mb-2">
+            Order clubs from smallest (nested) to largest. The reader sees this order in the legend.
+          </p>
+          {(() => {
+            // Sort clubs by rank ascending (smallest/most-nested first)
+            const ordered = Object.entries(clubStyles).sort(([, a], [, b]) => a.rank - b.rank);
+
+            function move(index: number, dir: -1 | 1) {
+              const target = index + dir;
+              if (target < 0 || target >= ordered.length) return;
+              const [clubA, styleA] = ordered[index];
+              const [clubB, styleB] = ordered[target];
+              // Swap ranks between the two adjacent clubs
+              onClubStylesChange({
+                ...clubStyles,
+                [clubA]: { ...styleA, rank: styleB.rank },
+                [clubB]: { ...styleB, rank: styleA.rank },
+              });
+            }
+
+            return ordered.map(([club, style], i) => {
               const count = [...keyVerses.values()].filter((v) => v === club).length;
               return (
-                <ClubStylePicker
-                  key={club}
-                  club={club}
-                  style={style}
-                  count={count}
-                  onChange={(s) => onClubStylesChange({ ...clubStyles, [club]: s })}
-                />
+                <div key={club} className="flex items-start gap-2">
+                  <div className="flex flex-col mt-3">
+                    <button
+                      onClick={() => move(i, -1)}
+                      disabled={i === 0}
+                      title="Move up (more nested)"
+                      className="text-xs px-1 leading-none text-gray-500 hover:text-gray-800 disabled:opacity-25 disabled:cursor-not-allowed"
+                    >
+                      ▲
+                    </button>
+                    <button
+                      onClick={() => move(i, 1)}
+                      disabled={i === ordered.length - 1}
+                      title="Move down (more inclusive)"
+                      className="text-xs px-1 leading-none text-gray-500 hover:text-gray-800 disabled:opacity-25 disabled:cursor-not-allowed"
+                    >
+                      ▼
+                    </button>
+                  </div>
+                  <div className="flex-1">
+                    <ClubStylePicker
+                      club={club}
+                      style={style}
+                      count={count}
+                      onChange={(s) => onClubStylesChange({ ...clubStyles, [club]: s })}
+                    />
+                  </div>
+                </div>
               );
-            })}
+            });
+          })()}
         </section>
       )}
 

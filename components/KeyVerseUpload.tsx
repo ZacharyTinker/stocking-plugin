@@ -1,7 +1,7 @@
 "use client";
 
 import { useRef, useState } from "react";
-import { ClubStyle, DEFAULT_CLUB_STYLES, CLUB_COLOR_PALETTE } from "@/types/scripture";
+import { ClubStyle, DEFAULT_CLUB_STYLES, CLUB_COLOR_PALETTE, inferClubRank } from "@/types/scripture";
 
 interface ParsedResult {
   keyVerses: Map<string, string>;   // "Luke 2:52" → "Club 150"
@@ -67,11 +67,12 @@ function buildResult(
   // Build clubStyles: keep existing, fill in defaults/auto for new clubs
   const clubStyles: Record<string, ClubStyle> = { ...existingStyles };
   let colorIdx = Object.keys(clubStyles).length;
+  let fallbackIdx = 0;
   for (const club of seenClubs) {
     if (!clubStyles[club]) {
       clubStyles[club] =
         DEFAULT_CLUB_STYLES[club] ??
-        { indicator: "filled", color: CLUB_COLOR_PALETTE[colorIdx++ % CLUB_COLOR_PALETTE.length] };
+        { indicator: "filled", color: CLUB_COLOR_PALETTE[colorIdx++ % CLUB_COLOR_PALETTE.length], rank: inferClubRank(club, fallbackIdx++) };
     }
   }
 
