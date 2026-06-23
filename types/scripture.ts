@@ -78,8 +78,10 @@ export interface AnalysisResult {
 
 /** Visual indicator style for a Key Verse club level */
 export interface ClubStyle {
-  /** "filled" = solid circle, "outline" = ring only, "dot" = small bullet, "none" = hidden */
-  indicator: "filled" | "outline" | "dot" | "none";
+  /** Shape drawn around (or next to) the verse number to mark a key verse.
+   *  filled = solid circle, outline = ring circle,
+   *  filled-square = solid square, outline-square = outlined square, none = no indicator */
+  indicator: "filled" | "outline" | "filled-square" | "outline-square" | "none";
   color: string;
   /** Ordering rank — lower ranks are nested inside (subsets of) higher ranks.
    *  Used to sort clubs in the legend so readers understand the hierarchy. */
@@ -87,9 +89,9 @@ export interface ClubStyle {
 }
 
 export const DEFAULT_CLUB_STYLES: Record<string, ClubStyle> = {
-  "Club 75":  { indicator: "dot",     color: "#94a3b8", rank: 75 },
-  "Club 150": { indicator: "filled",  color: "#2563eb", rank: 150 },
-  "Club 300": { indicator: "outline", color: "#2563eb", rank: 300 },
+  "Club 75":  { indicator: "filled-square",  color: "#94a3b8", rank: 75 },
+  "Club 150": { indicator: "filled",         color: "#2563eb", rank: 150 },
+  "Club 300": { indicator: "outline",        color: "#2563eb", rank: 300 },
 };
 
 /** Infer a default rank for a club from any digits in its name (e.g. "Club 150" → 150).

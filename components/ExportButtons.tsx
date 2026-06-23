@@ -52,10 +52,20 @@ export default function ExportButtons({
 
   async function handleDocx() {
     const { exportToDocx } = await import("@/lib/exportDocx");
+    const addonOpts = selectedAddons.size > 0 ? {
+      includeKeywords: selectedAddons.has("keywords"),
+      includeAlphabetical: selectedAddons.has("alphabetical"),
+      includeKeyPhrases2: selectedAddons.has("keyPhrases2"),
+      includeKeyPhrases3: selectedAddons.has("keyPhrases3"),
+      includeKeyVerseGrid: selectedAddons.has("keyVerseGrid"),
+      includeConcordance: selectedAddons.has("concordance"),
+      uniqueWords, uniqueWordVerses, uniquePhrases, phraseVerseMap,
+      keyVerses, clubStyles, wordFrequency, wordVerseIndex,
+    } : undefined;
     const blob = await exportToDocx(
       verses, uniqueWords, uniquePhrases, tokenOpts,
       tokenOpts.includeUniqueWords, tokenOpts.includeUniquePhrases,
-      displayOpts, keyVerses, clubStyles
+      displayOpts, keyVerses, clubStyles, addonOpts
     );
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
@@ -108,14 +118,11 @@ export default function ExportButtons({
       const cs = club ? clubStyles?.[club] : undefined;
       const vnTag = superscript ? "sup" : "span";
       if (cs && cs.indicator !== "none") {
-        if (cs.indicator === "dot") {
-          const vnSize = verseNumberStyle.fontSize;
-          const vnColor = verseNumberStyle.color || "#888888";
-          const va = superscript ? "vertical-align:super;" : "";
-          return `<span style="color:${cs.color};font-size:${vnSize}px;${va}margin-right:0.1em">•</span><span style="color:${vnColor};font-size:${vnSize}px;${va}">${verse.verse}</span> `;
-        }
-        const bg = cs.indicator === "filled" ? `background:${cs.color};color:white` : `border:1.5px solid ${cs.color};color:#555`;
-        return `<span style="display:inline-flex;align-items:center;justify-content:center;min-width:1.6em;height:1.6em;border-radius:50%;${bg};font-size:${verseNumberStyle.fontSize}px;${superscript ? "vertical-align:super;" : ""}line-height:1;margin-right:0.2em">${verse.verse}</span> `;
+        const isSquare = cs.indicator === "filled-square" || cs.indicator === "outline-square";
+        const isFilled = cs.indicator === "filled" || cs.indicator === "filled-square";
+        const radius = isSquare ? "2px" : "50%";
+        const bg = isFilled ? `background:${cs.color};color:white` : `border:1.5px solid ${cs.color};color:#555`;
+        return `<span style="display:inline-flex;align-items:center;justify-content:center;min-width:1.6em;height:1.6em;border-radius:${radius};${bg};font-size:${verseNumberStyle.fontSize}px;${superscript ? "vertical-align:super;" : ""}line-height:1;margin-right:0.2em">${verse.verse}</span> `;
       }
       return `<${vnTag} class="verse-number">${verse.verse}</${vnTag}>`;
     }
@@ -167,11 +174,12 @@ export default function ExportButtons({
       const ordered = Object.entries(clubStyles).sort(([, a], [, b]) => a.rank - b.rank);
       const items = ordered.map(([club, cs]) => {
         let ind = "";
-        if (cs.indicator === "dot") {
-          ind = `<span style="color:${cs.color};font-size:${verseNumberStyle.fontSize}px;margin-right:0.2em">•</span>`;
-        } else if (cs.indicator !== "none") {
-          const bg = cs.indicator === "filled" ? `background:${cs.color};color:white` : `border:1.5px solid ${cs.color};color:#555`;
-          ind = `<span style="display:inline-flex;align-items:center;justify-content:center;min-width:1.6em;height:1.6em;border-radius:50%;${bg};font-size:${verseNumberStyle.fontSize}px;line-height:1;margin-right:0.2em"></span>`;
+        if (cs.indicator !== "none") {
+          const isSquare = cs.indicator === "filled-square" || cs.indicator === "outline-square";
+          const isFilled = cs.indicator === "filled" || cs.indicator === "filled-square";
+          const radius = isSquare ? "2px" : "50%";
+          const bg = isFilled ? `background:${cs.color};color:white` : `border:1.5px solid ${cs.color};color:#555`;
+          ind = `<span style="display:inline-flex;align-items:center;justify-content:center;min-width:1.6em;height:1.6em;border-radius:${radius};${bg};font-size:${verseNumberStyle.fontSize}px;line-height:1;margin-right:0.2em"></span>`;
         }
         return `<span style="display:inline-flex;align-items:center;gap:0.25em;margin-right:1em">${ind}${esc(club)}</span>`;
       }).join("");
@@ -346,7 +354,10 @@ ${legendHtml}`;
 
       {/* Addon selector */}
       <div className="rounded-xl p-3 space-y-2" style={{ background: "#f5f3ff", border: "1.5px solid #ddd6fe" }}>
-        <p className="text-xs font-bold text-violet-600 uppercase tracking-wide">Addon Exports</p>
+        <div>
+          <p className="text-xs font-bold text-violet-600 uppercase tracking-wide">Study Addons</p>
+          <p className="text-xs text-violet-400 mt-0.5">Selected addons are appended to DOCX exports and available as a combined HTML file.</p>
+        </div>
         <div className="flex flex-wrap gap-x-4 gap-y-1.5">
           {(allAddons as AddonKey[]).map((k) => {
             const disabled = disabledAddons.has(k);

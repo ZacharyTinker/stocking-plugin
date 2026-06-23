@@ -10,16 +10,23 @@ interface Props {
 }
 
 const INDICATORS: { value: ClubStyle["indicator"]; label: string; preview: string }[] = [
-  { value: "filled",  label: "Filled circle",  preview: "●" },
-  { value: "outline", label: "Ring",            preview: "○" },
-  { value: "dot",     label: "Dot",             preview: "•" },
-  { value: "none",    label: "None",            preview: "–" },
+  { value: "filled",         label: "Solid circle",  preview: "●" },
+  { value: "outline",        label: "Ring circle",   preview: "○" },
+  { value: "filled-square",  label: "Solid square",  preview: "■" },
+  { value: "outline-square", label: "Open square",   preview: "□" },
+  { value: "none",           label: "None",          preview: "–" },
 ];
 
 const COLOR_PRESETS = ["", ...CLUB_COLOR_PALETTE, "#888888", "#000000"];
 
 export function indicatorChar(style: ClubStyle): string {
-  return style.indicator === "filled" ? "●" : style.indicator === "outline" ? "○" : style.indicator === "dot" ? "•" : "";
+  switch (style.indicator) {
+    case "filled": return "●";
+    case "outline": return "○";
+    case "filled-square": return "■";
+    case "outline-square": return "□";
+    default: return "";
+  }
 }
 
 export default function ClubStylePicker({ club, style, count, onChange }: Props) {
@@ -67,11 +74,11 @@ export default function ClubStylePicker({ club, style, count, onChange }: Props)
                 key={i}
                 onClick={() => patch({ color: c || "#888888" })}
                 title={c || "Default"}
-                className="w-6 h-6 rounded-lg transition-all"
+                className="w-8 h-8 rounded-lg transition-all flex items-center justify-center relative"
                 style={{
                   backgroundColor: c || "#cccccc",
-                  border: style.color === c ? "2.5px solid #7c3aed" : "1.5px solid #ddd6fe",
-                  boxShadow: style.color === c ? "0 0 0 2px #ede9fe" : undefined,
+                  border: style.color === c ? "3px solid #7c3aed" : "1.5px solid #ddd6fe",
+                  boxShadow: style.color === c ? "0 0 0 3px #c4b5fd" : undefined,
                 }}
               />
             ))}
@@ -80,7 +87,7 @@ export default function ClubStylePicker({ club, style, count, onChange }: Props)
               value={style.color || "#888888"}
               onChange={(e) => patch({ color: e.target.value })}
               title="Custom color"
-              className="w-6 h-6 rounded-lg cursor-pointer p-0"
+              className="w-8 h-8 rounded-lg cursor-pointer p-0"
               style={{ border: "1.5px solid #ddd6fe" }}
             />
           </div>
@@ -107,26 +114,18 @@ export function IndicatorDemo({
   const isSuperscript = verseNumberStyle ? verseNumberStyle.superscript !== false : true;
   const valign: React.CSSProperties["verticalAlign"] = isSuperscript ? "super" : "baseline";
 
-  if (clubStyle.indicator === "dot") {
-    return (
-      <span>
-        <span style={{ color: clubStyle.color, fontSize: `${vnSize}px`, marginRight: "0.1em", verticalAlign: valign }}>•</span>
-        <span style={{ color: vnColor, fontSize: `${vnSize}px`, verticalAlign: valign }}>{verseNum}</span>
-      </span>
-    );
-  }
-
-  const isFilled = clubStyle.indicator === "filled";
-  const circleSize = Math.round(vnSize * 1.6);
+  const boxSize = Math.round(vnSize * 1.6);
+  const isSquare = clubStyle.indicator === "filled-square" || clubStyle.indicator === "outline-square";
+  const isFilled = clubStyle.indicator === "filled" || clubStyle.indicator === "filled-square";
   return (
     <span
       style={{
         display: "inline-flex",
         alignItems: "center",
         justifyContent: "center",
-        minWidth: `${circleSize}px`,
-        height: `${circleSize}px`,
-        borderRadius: "50%",
+        minWidth: `${boxSize}px`,
+        height: `${boxSize}px`,
+        borderRadius: isSquare ? "2px" : "50%",
         background: isFilled ? clubStyle.color : "transparent",
         border: !isFilled ? `1.5px solid ${clubStyle.color}` : "none",
         fontSize: `${vnSize}px`,

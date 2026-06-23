@@ -55,12 +55,15 @@ ${gridRows}
 
 /** Renders a verse-number indicator span matching the preview/HTML export style */
 function indicatorHTML(cs: ClubStyle, content: string): string {
-  if (cs.indicator === "dot") {
-    return `<span class="kvg-vn" style="border:1px solid #ccc;border-radius:3px"><span style="color:${cs.color};font-size:0.65em;vertical-align:super">&#x25CF;</span>${content}</span>`;
+  if (cs.indicator === "none") {
+    return `<span class="kvg-vn" style="border:1px dashed #aaa;color:#999">${content}</span>`;
   }
-  const bg = cs.indicator === "filled"
-    ? `background:${cs.color};color:white;border:1.5px solid ${cs.color};border-radius:50%`
-    : `border:1.5px solid ${cs.color};color:#555;border-radius:50%`;
+  const isSquare = cs.indicator === "filled-square" || cs.indicator === "outline-square";
+  const isFilled = cs.indicator === "filled" || cs.indicator === "filled-square";
+  const radius = isSquare ? "2px" : "50%";
+  const bg = isFilled
+    ? `background:${cs.color};color:white;border:1.5px solid ${cs.color};border-radius:${radius}`
+    : `border:1.5px solid ${cs.color};color:#555;border-radius:${radius}`;
   return `<span class="kvg-vn" style="${bg}">${content}</span>`;
 }
 
