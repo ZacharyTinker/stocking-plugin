@@ -26,53 +26,53 @@ export default function ClubStylePicker({ club, style, count, onChange }: Props)
   function patch(p: Partial<ClubStyle>) { onChange({ ...style, ...p }); }
 
   return (
-    <div className="mt-2 mb-2 border rounded-lg p-3 bg-gray-50 space-y-2">
+    <div className="rounded-xl p-3 space-y-2.5" style={{ background: "#f5f3ff", border: "1.5px solid #ddd6fe" }}>
       <div className="flex items-center justify-between">
         <div>
-          <span className="font-medium text-gray-700 text-xs uppercase tracking-wide">{club}</span>
-          <span className="ml-2 text-xs text-gray-400">{count} verses</span>
+          <span className="font-bold text-violet-800 text-xs uppercase tracking-wide">{club}</span>
+          <span className="ml-2 text-xs text-violet-400">{count} verses</span>
         </div>
-        {/* Live preview of what the verse number looks like */}
         <span className="text-sm font-mono">
-          {style.indicator !== "none" && (
-            <IndicatorDemo verseNum={5} clubStyle={style} />
-          )}
-          {style.indicator === "none" && (
-            <sup className="text-gray-400 text-xs">5</sup>
-          )}
+          {style.indicator !== "none"
+            ? <IndicatorDemo verseNum={5} clubStyle={style} />
+            : <sup className="text-violet-300 text-xs">5</sup>}
         </span>
       </div>
 
-      {/* Indicator type */}
-      <div className="flex gap-2 flex-wrap">
+      <div className="flex gap-1.5 flex-wrap">
         {INDICATORS.map((ind) => (
           <button
             key={ind.value}
             onClick={() => patch({ indicator: ind.value })}
-            className={`flex items-center gap-1 px-2 py-1 rounded border text-sm transition-colors ${
-              style.indicator === ind.value
-                ? "border-blue-500 bg-blue-50 text-blue-700"
-                : "border-gray-300 hover:border-gray-400"
-            }`}
+            className="flex items-center gap-1 px-2 py-1 rounded-lg text-xs font-semibold transition-all"
+            style={style.indicator === ind.value ? {
+              background: "linear-gradient(135deg,#7c3aed,#6d28d9)", color: "white",
+              boxShadow: "0 2px 8px rgba(124,58,237,0.25)"
+            } : {
+              background: "white", color: "#6d28d9", border: "1.5px solid #ddd6fe"
+            }}
           >
-            <span style={{ color: style.color }}>{ind.preview}</span>
-            <span className="text-xs">{ind.label}</span>
+            <span style={style.indicator === ind.value ? { color: "white" } : { color: style.color }}>{ind.preview}</span>
+            <span>{ind.label}</span>
           </button>
         ))}
       </div>
 
-      {/* Color */}
       {style.indicator !== "none" && (
-        <div className="space-y-1">
-          <span className="text-xs text-gray-500">Color</span>
-          <div className="flex gap-1 flex-wrap">
+        <div className="space-y-1.5">
+          <p className="text-xs font-semibold text-violet-400 uppercase tracking-wide">Color</p>
+          <div className="flex gap-1.5 flex-wrap">
             {COLOR_PRESETS.map((c, i) => (
               <button
                 key={i}
                 onClick={() => patch({ color: c || "#888888" })}
                 title={c || "Default"}
-                className={`w-6 h-6 rounded border-2 ${style.color === c || (!c && !style.color) ? "border-blue-500" : "border-gray-300"}`}
-                style={{ backgroundColor: c || "#cccccc" }}
+                className="w-6 h-6 rounded-lg transition-all"
+                style={{
+                  backgroundColor: c || "#cccccc",
+                  border: style.color === c ? "2.5px solid #7c3aed" : "1.5px solid #ddd6fe",
+                  boxShadow: style.color === c ? "0 0 0 2px #ede9fe" : undefined,
+                }}
               />
             ))}
             <input
@@ -80,7 +80,8 @@ export default function ClubStylePicker({ club, style, count, onChange }: Props)
               value={style.color || "#888888"}
               onChange={(e) => patch({ color: e.target.value })}
               title="Custom color"
-              className="w-6 h-6 rounded border border-gray-300 cursor-pointer p-0"
+              className="w-6 h-6 rounded-lg cursor-pointer p-0"
+              style={{ border: "1.5px solid #ddd6fe" }}
             />
           </div>
         </div>
