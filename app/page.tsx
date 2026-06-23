@@ -32,9 +32,9 @@ const DEFAULT_DISPLAY_OPTS: DisplayOptions = {
   lineSpacing: 1.8,
   includeSectionHeadings: true,
   includeFootnotes: false,
-  wordStyle: { bold: true, italic: false, underline: false, highlight: "", color: "", sizeBoost: 0 },
-  phrase2Style: { bold: false, italic: false, underline: true, highlight: "", color: "", sizeBoost: 0 },
-  phrase3Style: { bold: false, italic: false, underline: false, highlight: "#add8e6", color: "", sizeBoost: 0 },
+  wordStyle:    { bold: true,  italic: false, underline: false, highlight: "",        color: "#1d4ed8", sizeBoost: 0 },
+  phrase2Style: { bold: false, italic: true,  underline: true,  highlight: "",        color: "",        sizeBoost: 0 },
+  phrase3Style: { bold: false, italic: false, underline: false, highlight: "#fef08a", color: "",        sizeBoost: 0 },
   bookTitleStyle:      { ...DEFAULT_ELEMENT, bold: true, fontSize: 26 },
   chapterHeadingStyle: { ...DEFAULT_ELEMENT, bold: true, fontSize: 20 },
   sectionHeadingStyle: { ...DEFAULT_ELEMENT, bold: true, italic: true, fontSize: 14 },
@@ -65,7 +65,20 @@ export default function Home() {
       if (!raw) return;
       const data = JSON.parse(raw);
       if (data.tokenOpts) setTokenOpts({ ...DEFAULT_TOKEN_OPTS, ...data.tokenOpts });
-      if (data.displayOpts) setDisplayOpts({ ...DEFAULT_DISPLAY_OPTS, ...data.displayOpts });
+      if (data.displayOpts) {
+        const d = data.displayOpts;
+        setDisplayOpts({
+          ...DEFAULT_DISPLAY_OPTS,
+          ...d,
+          wordStyle:            { ...DEFAULT_DISPLAY_OPTS.wordStyle,            ...(d.wordStyle            ?? {}) },
+          phrase2Style:         { ...DEFAULT_DISPLAY_OPTS.phrase2Style,         ...(d.phrase2Style         ?? {}) },
+          phrase3Style:         { ...DEFAULT_DISPLAY_OPTS.phrase3Style,         ...(d.phrase3Style         ?? {}) },
+          bookTitleStyle:       { ...DEFAULT_DISPLAY_OPTS.bookTitleStyle,       ...(d.bookTitleStyle       ?? {}) },
+          chapterHeadingStyle:  { ...DEFAULT_DISPLAY_OPTS.chapterHeadingStyle,  ...(d.chapterHeadingStyle  ?? {}) },
+          sectionHeadingStyle:  { ...DEFAULT_DISPLAY_OPTS.sectionHeadingStyle,  ...(d.sectionHeadingStyle  ?? {}) },
+          verseNumberStyle:     { ...DEFAULT_DISPLAY_OPTS.verseNumberStyle,     ...(d.verseNumberStyle     ?? {}) },
+        });
+      }
       if (data.clubStyles) setClubStyles(data.clubStyles);
       if (data.excludedWords) setExcludedWords(new Set(data.excludedWords as string[]));
       if (data.keyVerses) setKeyVerses(new Map(data.keyVerses as [string, string][]));
