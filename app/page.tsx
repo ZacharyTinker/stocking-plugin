@@ -56,7 +56,6 @@ export default function Home() {
   const [tab, setTab] = useState<Tab>("input");
   const [inputMode, setInputMode] = useState<InputMode>("api");
   const [settingsOpen, setSettingsOpen] = useState(false);
-
   const [exportSuffix, setExportSuffix] = useState("");
 
   // Restore persisted settings on mount
@@ -96,7 +95,6 @@ export default function Home() {
     [verses, tokenOpts]
   );
 
-  // Result with manually excluded words removed from markup/export
   const activeResult: AnalysisResult = useMemo(() => {
     if (excludedWords.size === 0) return result;
     const uniqueWords = new Set([...result.uniqueWords].filter(w => !excludedWords.has(w)));
@@ -130,26 +128,52 @@ export default function Home() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      <header className="bg-white border-b shadow-sm no-print">
-        <div className="max-w-5xl mx-auto px-4 py-3 flex items-center justify-between">
-          <div>
-            <h1 className="text-lg font-bold text-gray-800">Bible Quizzing Markup Tool</h1>
-            <p className="text-xs text-gray-500">Identify unique words and phrases for study materials</p>
+    <div className="min-h-screen" style={{ background: "var(--background)" }}>
+      {/* Header */}
+      <header className="no-print" style={{
+        background: "linear-gradient(135deg, #1e1b4b 0%, #3b0764 50%, #1e1b4b 100%)",
+        boxShadow: "0 4px 24px rgba(0,0,0,0.25)"
+      }}>
+        <div className="max-w-3xl mx-auto px-4 py-4 flex items-center justify-between gap-3">
+          <div className="flex items-center gap-3 min-w-0">
+            <div className="w-9 h-9 rounded-xl flex items-center justify-center shrink-0"
+                 style={{ background: "linear-gradient(135deg, #7c3aed, #ec4899)" }}>
+              <span className="text-lg">📖</span>
+            </div>
+            <div className="min-w-0">
+              <h1 className="font-black text-white text-lg leading-tight tracking-tight">
+                Bible<span className="gradient-text">Quiz</span> Markup
+              </h1>
+              <p className="text-violet-300 text-xs hidden sm:block">unique words for study</p>
+            </div>
           </div>
-          <button
-            onClick={() => setSettingsOpen((v) => !v)}
-            className="border rounded px-3 py-1.5 text-sm hover:bg-gray-50 transition-colors"
-          >
-            ⚙ Settings
-          </button>
+
+          <div className="flex items-center gap-2">
+            {verses.length > 0 && (
+              <div className="hidden sm:flex items-center gap-1.5">
+                <span className="bq-badge">{verses.length} verses</span>
+                <span className="bq-badge">{activeResult.uniqueWords.size} unique</span>
+                {keyVerses.size > 0 && <span className="bq-badge bq-badge-green">{keyVerses.size} key</span>}
+              </div>
+            )}
+            <button
+              onClick={() => setSettingsOpen(v => !v)}
+              className="w-9 h-9 rounded-xl flex items-center justify-center transition-all text-white"
+              style={{ background: settingsOpen ? "rgba(124,58,237,0.5)" : "rgba(255,255,255,0.1)" }}
+              title="Settings"
+            >
+              ⚙
+            </button>
+          </div>
         </div>
       </header>
 
-      <div className="max-w-5xl mx-auto px-4 py-6 space-y-6">
+      <div className="max-w-3xl mx-auto px-4 py-5 space-y-4">
+
+        {/* Settings panel */}
         {settingsOpen && (
-          <div className="bg-white border rounded-lg p-5 shadow-sm no-print">
-            <h2 className="font-semibold text-gray-800 mb-4">Settings</h2>
+          <div className="bq-card no-print">
+            <p className="bq-section-title">Settings</p>
             <SettingsPanel
               tokenOpts={tokenOpts}
               displayOpts={displayOpts}
@@ -162,61 +186,57 @@ export default function Home() {
           </div>
         )}
 
-        <div className="flex border-b no-print">
-          {(["input", "preview"] as Tab[]).map((t) => (
-            <button
-              key={t}
-              onClick={() => setTab(t)}
-              className={`px-5 py-2 text-sm font-medium border-b-2 transition-colors ${
-                tab === t
-                  ? "border-blue-600 text-blue-600"
-                  : "border-transparent text-gray-600 hover:text-gray-800"
-              }`}
-            >
-              {t === "input" ? "Input" : "Preview & Export"}
-              {t === "preview" && verses.length > 0 && (
-                <span className="ml-1.5 text-xs bg-green-100 text-green-700 rounded px-1">
-                  {verses.length} verses
-                </span>
-              )}
-            </button>
-          ))}
+        {/* Tab bar */}
+        <div className="tab-bar no-print">
+          <button
+            className={`tab-btn ${tab === "input" ? "active" : ""}`}
+            onClick={() => setTab("input")}
+          >
+            ✏️ Input
+          </button>
+          <button
+            className={`tab-btn ${tab === "preview" ? "active" : ""}`}
+            onClick={() => setTab("preview")}
+          >
+            👁 Preview &amp; Export
+            {verses.length > 0 && (
+              <span className="ml-1.5 text-xs rounded-full px-1.5 py-0.5"
+                    style={{ background: tab === "preview" ? "rgba(255,255,255,0.25)" : "#ede9fe", color: tab === "preview" ? "white" : "#5b21b6" }}>
+                {verses.length}
+              </span>
+            )}
+          </button>
         </div>
 
+        {/* Input tab */}
         {tab === "input" && (
-          <div className="bg-white border rounded-lg p-5 shadow-sm space-y-5">
-            {/* Input mode toggle */}
-            <div className="flex gap-1 border rounded-lg p-1 w-fit bg-gray-100">
-              {([["api", "Fetch from API"], ["manual", "Paste / Upload"]] as [InputMode, string][]).map(([mode, label]) => (
-                <button
-                  key={mode}
-                  onClick={() => setInputMode(mode)}
-                  className={`px-4 py-1.5 rounded text-sm font-medium transition-colors ${
-                    inputMode === mode ? "bg-white shadow text-gray-900" : "text-gray-500 hover:text-gray-700"
-                  }`}
-                >
-                  {label}
-                </button>
-              ))}
+          <div className="space-y-4">
+            <div className="bq-card no-print space-y-4">
+              {/* Mode toggle */}
+              <div className="flex items-center justify-between flex-wrap gap-2">
+                <p className="bq-section-title mb-0" style={{ marginBottom: 0 }}>Load Scripture</p>
+                <div className="segment-control">
+                  <button className={`segment-btn ${inputMode === "api" ? "active" : ""}`} onClick={() => setInputMode("api")}>
+                    🌐 Fetch
+                  </button>
+                  <button className={`segment-btn ${inputMode === "manual" ? "active" : ""}`} onClick={() => setInputMode("manual")}>
+                    📋 Paste
+                  </button>
+                </div>
+              </div>
+
+              {inputMode === "api" ? (
+                <PassageSelector onFetched={handleParsed} />
+              ) : (
+                <ScriptureInput onParsed={handleParsed} />
+              )}
             </div>
 
-            {inputMode === "api" ? (
-              <>
-                <h2 className="font-semibold text-gray-800">Select a passage</h2>
-                <PassageSelector onFetched={handleParsed} />
-              </>
-            ) : (
-              <>
-                <h2 className="font-semibold text-gray-800">Paste or upload Scripture text</h2>
-                <ScriptureInput onParsed={handleParsed} />
-              </>
-            )}
-
-            {/* Key Verse upload — available regardless of input mode */}
-            <div className="border-t pt-4">
-              <h2 className="font-semibold text-gray-800 mb-2">Key Verses</h2>
-              <p className="text-xs text-gray-500 mb-3">
-                Upload a list of key verses (Club 75 / 150 / 300 or custom clubs) to show circle indicators next to verse numbers.
+            {/* Key Verses */}
+            <div className="bq-card no-print">
+              <p className="bq-section-title">Key Verses</p>
+              <p className="text-sm text-violet-400 mb-3">
+                Upload a CSV of key verses to show circle indicators next to verse numbers in the markup.
               </p>
               <KeyVerseUpload
                 keyVerses={keyVerses}
@@ -228,21 +248,31 @@ export default function Home() {
           </div>
         )}
 
+        {/* Preview tab */}
         {tab === "preview" && (
           <div className="space-y-4">
             {verses.length === 0 ? (
-              <div className="bg-white border rounded-lg p-8 text-center text-gray-500 text-sm">
-                Go to the <strong>Input</strong> tab and parse Scripture first.
+              <div className="bq-card text-center py-12">
+                <div className="text-4xl mb-3">📖</div>
+                <p className="font-bold text-violet-800 text-lg mb-1">No scripture loaded</p>
+                <p className="text-violet-400 text-sm">Go to the Input tab to fetch or paste a passage.</p>
+                <button className="btn-primary mt-4" onClick={() => setTab("input")}>
+                  Go to Input →
+                </button>
               </div>
             ) : (
               <>
-                <div className="flex items-center justify-between flex-wrap gap-3 no-print">
-                  <div className="text-sm text-gray-600">
-                    <strong>{verses.length}</strong> verses &bull;{" "}
-                    <strong>{activeResult.uniqueWords.size}</strong> unique words
-                    {excludedWords.size > 0 && <span className="text-orange-500"> ({excludedWords.size} excluded)</span>}
-                    {keyVerses.size > 0 && <> &bull; <strong>{keyVerses.size}</strong> key verses</>}
-                  </div>
+                {/* Mobile stats bar */}
+                <div className="sm:hidden flex gap-2 flex-wrap no-print">
+                  <span className="bq-badge">{verses.length} verses</span>
+                  <span className="bq-badge">{activeResult.uniqueWords.size} unique words</span>
+                  {excludedWords.size > 0 && <span className="bq-badge bq-badge-orange">{excludedWords.size} excluded</span>}
+                  {keyVerses.size > 0 && <span className="bq-badge bq-badge-green">{keyVerses.size} key verses</span>}
+                </div>
+
+                {/* Export card */}
+                <div className="bq-card no-print">
+                  <p className="bq-section-title">Export</p>
                   <ExportButtons
                     result={activeResult}
                     tokenOpts={tokenOpts}
@@ -254,7 +284,9 @@ export default function Home() {
                     onExportSuffixChange={setExportSuffix}
                   />
                 </div>
-                <div className="no-print">
+
+                {/* Word analysis */}
+                <div className="bq-card no-print">
                   <WordList
                     result={result}
                     excludedWords={excludedWords}
@@ -262,8 +294,15 @@ export default function Home() {
                     onRestore={handleRestore}
                   />
                 </div>
-                <div className="no-print"><WordFrequency result={activeResult} /></div>
-                <Preview result={activeResult} tokenOpts={tokenOpts} displayOpts={displayOpts} keyVerses={keyVerses} clubStyles={clubStyles} />
+
+                <div className="bq-card no-print">
+                  <WordFrequency result={activeResult} />
+                </div>
+
+                {/* Scripture preview */}
+                <div className="bq-card preview-area" style={{ padding: "1.5rem" }}>
+                  <Preview result={activeResult} tokenOpts={tokenOpts} displayOpts={displayOpts} keyVerses={keyVerses} clubStyles={clubStyles} />
+                </div>
               </>
             )}
           </div>

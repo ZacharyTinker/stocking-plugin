@@ -307,42 +307,60 @@ ${legendHtml}`;
   ]);
 
   return (
-    <div className="flex flex-col gap-3 no-print">
+    <div className="flex flex-col gap-4 no-print">
       {/* File name row */}
-      <div className="flex items-center gap-2 text-sm">
-        <span className="text-gray-500 text-xs whitespace-nowrap">File name:</span>
-        <span className="text-gray-700 text-xs font-medium">{passageName}</span>
+      <div className="flex items-center gap-2 flex-wrap">
+        <span className="text-xs font-semibold text-violet-500 uppercase tracking-wide whitespace-nowrap">File:</span>
+        <span className="text-sm font-bold text-violet-800">{passageName}</span>
         <input
           type="text"
           placeholder="optional suffix…"
           value={exportSuffix}
           onChange={(e) => onExportSuffixChange?.(e.target.value)}
-          className="border rounded px-2 py-0.5 text-xs text-gray-700 w-36"
+          className="bq-input"
+          style={{ maxWidth: "160px" }}
         />
       </div>
 
       {/* Main exports */}
       <div className="flex gap-2 flex-wrap">
-        <button onClick={handleDocx} className="bg-green-600 text-white px-4 py-1.5 rounded text-sm hover:bg-green-700 transition-colors">Export DOCX</button>
-        <button onClick={handleHTML} className="bg-indigo-600 text-white px-4 py-1.5 rounded text-sm hover:bg-indigo-700 transition-colors">Export HTML</button>
-        <button onClick={handleStudyCards} className="bg-purple-600 text-white px-4 py-1.5 rounded text-sm hover:bg-purple-700 transition-colors">Study Cards</button>
-        <button onClick={handlePrint} className="border px-4 py-1.5 rounded text-sm text-gray-700 hover:bg-gray-50 transition-colors">Print</button>
+        <button onClick={handleDocx}
+          className="btn-primary"
+          style={{ background: "linear-gradient(135deg,#059669,#047857)" }}>
+          📄 DOCX
+        </button>
+        <button onClick={handleHTML}
+          className="btn-primary"
+          style={{ background: "linear-gradient(135deg,#4f46e5,#3730a3)" }}>
+          🌐 HTML
+        </button>
+        <button onClick={handleStudyCards}
+          className="btn-primary"
+          style={{ background: "linear-gradient(135deg,#7c3aed,#6d28d9)" }}>
+          🃏 Cards
+        </button>
+        <button onClick={handlePrint} className="btn-secondary">
+          🖨 Print
+        </button>
       </div>
 
       {/* Addon selector */}
-      <div className="border rounded-lg p-3 bg-gray-50">
-        <p className="text-xs font-semibold text-gray-600 mb-2">Addons — select then export together:</p>
-        <div className="flex flex-wrap gap-x-4 gap-y-1 mb-2">
-          {allAddons.map((k) => {
+      <div className="rounded-xl p-3 space-y-2" style={{ background: "#f5f3ff", border: "1.5px solid #ddd6fe" }}>
+        <p className="text-xs font-bold text-violet-600 uppercase tracking-wide">Addon Exports</p>
+        <div className="flex flex-wrap gap-x-4 gap-y-1.5">
+          {(allAddons as AddonKey[]).map((k) => {
             const disabled = disabledAddons.has(k);
+            const checked = selectedAddons.has(k);
             return (
-              <label key={k} className={`flex items-center gap-1.5 text-xs ${disabled ? "opacity-40 cursor-not-allowed" : "cursor-pointer"}`}>
+              <label key={k} className={`flex items-center gap-1.5 text-sm font-medium cursor-pointer ${disabled ? "opacity-35 cursor-not-allowed" : ""}`}
+                     style={{ color: checked ? "#5b21b6" : "#7c3aed" }}>
                 <input
                   type="checkbox"
-                  checked={selectedAddons.has(k)}
+                  checked={checked}
                   disabled={disabled}
                   onChange={() => toggleAddon(k)}
                   className="rounded"
+                  style={{ accentColor: "#7c3aed" }}
                 />
                 {ADDON_LABELS[k]}
               </label>
@@ -352,9 +370,13 @@ ${legendHtml}`;
         <button
           onClick={handleExportAddons}
           disabled={selectedAddons.size === 0}
-          className="bg-amber-600 text-white px-4 py-1.5 rounded text-sm hover:bg-amber-700 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+          className="btn-primary"
+          style={{
+            background: selectedAddons.size > 0 ? "linear-gradient(135deg,#d97706,#b45309)" : undefined,
+            boxShadow: selectedAddons.size > 0 ? "0 4px 12px rgba(217,119,6,0.3)" : undefined,
+          }}
         >
-          Export Selected Addons ({selectedAddons.size})
+          ✨ Export {selectedAddons.size > 0 ? `${selectedAddons.size} selected` : "addons"}
         </button>
       </div>
     </div>

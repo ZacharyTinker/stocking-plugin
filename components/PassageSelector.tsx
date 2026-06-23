@@ -18,7 +18,7 @@ interface Segment {
 
 let nextId = 1;
 
-function makeSegment(book = "1 Corinthians"): Segment {
+function makeSegment(book = "John"): Segment {
   return { id: nextId++, book, startChapter: 1, endChapter: chapterCount(book) };
 }
 
@@ -98,11 +98,7 @@ export default function PassageSelector({ onFetched }: Props) {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           translation,
-          segments: segments.map(({ book, startChapter, endChapter }) => ({
-            book,
-            startChapter,
-            endChapter,
-          })),
+          segments: segments.map(({ book, startChapter, endChapter }) => ({ book, startChapter, endChapter })),
         }),
       });
       const data = await res.json();
@@ -118,19 +114,25 @@ export default function PassageSelector({ onFetched }: Props) {
 
   return (
     <div className="space-y-4">
-      {/* Translation selector */}
+      {/* Translation */}
       <div>
-        <label className="block text-sm font-medium mb-1">Translation</label>
+        <p className="text-xs font-semibold text-violet-500 uppercase tracking-wide mb-2">Translation</p>
         <div className="flex gap-2 flex-wrap">
           {TRANSLATIONS.map((t) => (
             <button
               key={t.id}
               onClick={() => setTranslation(t.id)}
-              className={`px-3 py-1.5 rounded border text-sm font-medium transition-colors ${
-                translation === t.id
-                  ? "bg-blue-600 text-white border-blue-600"
-                  : "bg-white text-gray-700 border-gray-300 hover:border-blue-400"
-              }`}
+              className="px-3 py-1.5 rounded-xl text-sm font-semibold transition-all border"
+              style={translation === t.id ? {
+                background: "linear-gradient(135deg, #7c3aed, #6d28d9)",
+                color: "white",
+                border: "1.5px solid transparent",
+                boxShadow: "0 4px 12px rgba(124,58,237,0.25)",
+              } : {
+                background: "white",
+                color: "#6d28d9",
+                border: "1.5px solid #ddd6fe",
+              }}
             >
               {t.name}
             </button>
@@ -138,84 +140,106 @@ export default function PassageSelector({ onFetched }: Props) {
         </div>
       </div>
 
-      {/* Passage segments */}
-      <div className="space-y-2">
-        {segments.map((seg, idx) => {
-          const maxChapters = chapterCount(seg.book);
-          const chapterNums = Array.from({ length: maxChapters }, (_, i) => i + 1);
+      {/* Segments */}
+      <div>
+        <p className="text-xs font-semibold text-violet-500 uppercase tracking-wide mb-2">Passage</p>
+        <div className="space-y-2">
+          {segments.map((seg, idx) => {
+            const maxChapters = chapterCount(seg.book);
+            const chapterNums = Array.from({ length: maxChapters }, (_, i) => i + 1);
 
-          return (
-            <div key={seg.id} className="flex flex-wrap gap-3 items-center bg-gray-50 border rounded-lg px-3 py-2">
-              <span className="text-xs text-gray-400 w-4 shrink-0">{idx + 1}</span>
+            return (
+              <div key={seg.id}
+                   className="flex flex-wrap gap-2 items-center rounded-xl px-3 py-2.5"
+                   style={{ background: "#f5f3ff", border: "1.5px solid #ddd6fe" }}>
+                {segments.length > 1 && (
+                  <span className="text-xs font-bold text-violet-400 w-5 shrink-0">{idx + 1}</span>
+                )}
 
-              <select
-                className="border rounded px-2 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white"
-                value={seg.book}
-                onChange={(e) => handleBookChange(seg.id, e.target.value)}
-              >
-                <optgroup label="Old Testament">
-                  {OT.map((b) => <option key={b.name} value={b.name}>{b.name}</option>)}
-                </optgroup>
-                <optgroup label="New Testament">
-                  {NT.map((b) => <option key={b.name} value={b.name}>{b.name}</option>)}
-                </optgroup>
-              </select>
-
-              <span className="text-sm text-gray-500">Ch.</span>
-
-              <select
-                className="border rounded px-2 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white w-16"
-                value={seg.startChapter}
-                onChange={(e) => updateSegment(seg.id, { startChapter: Number(e.target.value) })}
-              >
-                {chapterNums.map((n) => <option key={n} value={n}>{n}</option>)}
-              </select>
-
-              <span className="text-sm text-gray-500">–</span>
-
-              <select
-                className="border rounded px-2 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white w-16"
-                value={seg.endChapter}
-                onChange={(e) => updateSegment(seg.id, { endChapter: Number(e.target.value) })}
-              >
-                {chapterNums.filter((n) => n >= seg.startChapter).map((n) => (
-                  <option key={n} value={n}>{n}</option>
-                ))}
-              </select>
-
-              {segments.length > 1 && (
-                <button
-                  onClick={() => removeSegment(seg.id)}
-                  className="text-gray-400 hover:text-red-500 text-lg leading-none ml-auto"
-                  title="Remove"
+                <select
+                  className="bq-select flex-1 min-w-32"
+                  value={seg.book}
+                  onChange={(e) => handleBookChange(seg.id, e.target.value)}
                 >
-                  ×
-                </button>
-              )}
-            </div>
-          );
-        })}
+                  <optgroup label="Old Testament">
+                    {OT.map((b) => <option key={b.name} value={b.name}>{b.name}</option>)}
+                  </optgroup>
+                  <optgroup label="New Testament">
+                    {NT.map((b) => <option key={b.name} value={b.name}>{b.name}</option>)}
+                  </optgroup>
+                </select>
+
+                <span className="text-xs font-semibold text-violet-400">Ch.</span>
+
+                <select
+                  className="bq-select w-16"
+                  value={seg.startChapter}
+                  onChange={(e) => updateSegment(seg.id, { startChapter: Number(e.target.value) })}
+                >
+                  {chapterNums.map((n) => <option key={n} value={n}>{n}</option>)}
+                </select>
+
+                <span className="text-violet-300 font-bold">–</span>
+
+                <select
+                  className="bq-select w-16"
+                  value={seg.endChapter}
+                  onChange={(e) => updateSegment(seg.id, { endChapter: Number(e.target.value) })}
+                >
+                  {chapterNums.filter((n) => n >= seg.startChapter).map((n) => (
+                    <option key={n} value={n}>{n}</option>
+                  ))}
+                </select>
+
+                {segments.length > 1 && (
+                  <button
+                    onClick={() => removeSegment(seg.id)}
+                    className="ml-auto w-7 h-7 rounded-lg flex items-center justify-center text-violet-300 hover:text-red-400 hover:bg-red-50 transition-all text-lg font-bold"
+                  >
+                    ×
+                  </button>
+                )}
+              </div>
+            );
+          })}
+        </div>
       </div>
 
       <div className="flex gap-3 items-center flex-wrap">
         <button
           onClick={addSegment}
-          className="border rounded px-4 py-1.5 text-sm text-gray-600 hover:bg-gray-50 transition-colors"
+          className="btn-secondary text-sm"
         >
           + Add book
         </button>
         <button
           onClick={handleFetch}
           disabled={loading}
-          className="bg-blue-600 text-white px-5 py-2 rounded text-sm hover:bg-blue-700 transition-colors disabled:opacity-50"
+          className="btn-primary"
+          style={{ minWidth: "140px" }}
         >
-          {loading ? "Fetching…" : `Fetch ${segments.length > 1 ? `${segments.length} books` : "passage"} →`}
+          {loading ? (
+            <span className="flex items-center gap-2">
+              <span className="inline-block w-3.5 h-3.5 border-2 border-white/30 border-t-white rounded-full"
+                    style={{ animation: "spin 0.7s linear infinite" }} />
+              Fetching…
+            </span>
+          ) : (
+            `Fetch ${segments.length > 1 ? `${segments.length} books` : "passage"} →`
+          )}
         </button>
       </div>
 
-      {error && <p className="text-red-600 text-sm">{error}</p>}
+      {error && (
+        <div className="flex items-start gap-2 rounded-xl px-3 py-2.5 text-sm"
+             style={{ background: "#fff1f2", border: "1.5px solid #fecdd3", color: "#be123c" }}>
+          ⚠️ {error}
+        </div>
+      )}
 
-      <p className="text-xs text-gray-500">{selectedTranslation.copyright}</p>
+      <p className="text-xs text-violet-400">{selectedTranslation.copyright}</p>
+
+      <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
     </div>
   );
 }

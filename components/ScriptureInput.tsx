@@ -55,22 +55,24 @@ export default function ScriptureInput({ onParsed }: Props) {
 
   return (
     <div className="space-y-4">
-      <div className="flex gap-3 flex-wrap">
-        <label className="flex items-center gap-2 text-sm">
-          <input type="radio" value="text" checked={inputMode === "text"} onChange={() => setInputMode("text")} />
-          Plain text (chapter:verse format)
-        </label>
-        <label className="flex items-center gap-2 text-sm">
-          <input type="radio" value="json" checked={inputMode === "json"} onChange={() => setInputMode("json")} />
-          JSON array
-        </label>
+      <div>
+        <p className="text-xs font-semibold text-violet-500 uppercase tracking-wide mb-2">Format</p>
+        <div className="segment-control">
+          <button className={`segment-btn ${inputMode === "text" ? "active" : ""}`} onClick={() => setInputMode("text")}>
+            Plain text
+          </button>
+          <button className={`segment-btn ${inputMode === "json" ? "active" : ""}`} onClick={() => setInputMode("json")}>
+            JSON
+          </button>
+        </div>
       </div>
 
       {inputMode === "text" && (
         <div>
-          <label className="block text-sm font-medium mb-1">Book name</label>
+          <p className="text-xs font-semibold text-violet-500 uppercase tracking-wide mb-1">Book name</p>
           <input
-            className="border rounded px-3 py-1.5 w-64 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+            className="bq-input"
+            style={{ maxWidth: "260px" }}
             value={bookName}
             onChange={(e) => setBookName(e.target.value)}
             placeholder="e.g. 1 Corinthians"
@@ -79,43 +81,38 @@ export default function ScriptureInput({ onParsed }: Props) {
       )}
 
       <div>
-        <label className="block text-sm font-medium mb-1">
-          Scripture text{" "}
-          <span className="font-normal text-gray-500">
-            (paste licensed text or upload a file)
-          </span>
-        </label>
+        <p className="text-xs font-semibold text-violet-500 uppercase tracking-wide mb-1">Scripture text</p>
         <textarea
-          className="w-full border rounded px-3 py-2 text-sm font-mono h-52 focus:outline-none focus:ring-2 focus:ring-blue-500"
+          className="bq-input font-mono h-52"
+          style={{ resize: "vertical" }}
           value={text}
           onChange={(e) => setText(e.target.value)}
           placeholder={inputMode === "text" ? "1:1 Verse text here...\n[Section Heading]\n1:2 Next verse..." : '[{"book":"...","chapter":1,"verse":1,"text":"..."}]'}
         />
       </div>
 
-      <div className="flex items-center gap-4 flex-wrap">
-        <label className="text-sm cursor-pointer text-blue-600 underline">
-          Upload file (.txt / .json)
+      <div className="flex items-center gap-3 flex-wrap">
+        <label className="btn-secondary text-sm cursor-pointer">
+          📁 Upload file
           <input type="file" accept=".txt,.json" className="hidden" onChange={handleFile} />
         </label>
-        <button
-          onClick={handleParse}
-          className="bg-blue-600 text-white px-5 py-2 rounded text-sm hover:bg-blue-700 transition-colors"
-        >
+        <button onClick={handleParse} className="btn-primary">
           Parse Scripture →
         </button>
       </div>
 
-      {error && <p className="text-red-600 text-sm">{error}</p>}
+      {error && (
+        <div className="flex items-start gap-2 rounded-xl px-3 py-2.5 text-sm"
+             style={{ background: "#fff1f2", border: "1.5px solid #fecdd3", color: "#be123c" }}>
+          ⚠️ {error}
+        </div>
+      )}
 
-      <div className="text-xs text-gray-500 border-t pt-3">
-        <strong>Plain-text format:</strong> Each verse on its own line as{" "}
-        <code>chapter:verse text</code>. Optional section headings in{" "}
-        <code>[square brackets]</code> on their own line.
-        <br />
-        <strong>Licensing:</strong> Only paste or upload Scripture text you are
-        licensed to use.
-      </div>
+      <p className="text-xs text-violet-400">
+        Each verse on its own line as <code className="bg-violet-100 px-1 rounded">chapter:verse text</code>.
+        Optional section headings in <code className="bg-violet-100 px-1 rounded">[square brackets]</code>.
+        Only paste Scripture you are licensed to use.
+      </p>
     </div>
   );
 }

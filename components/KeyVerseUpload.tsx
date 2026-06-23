@@ -119,22 +119,19 @@ export default function KeyVerseUpload({ keyVerses, clubStyles, onLoad, onClear 
   return (
     <div className="space-y-3">
       <div className="flex gap-2 items-center flex-wrap">
-        <button
-          onClick={() => inputRef.current?.click()}
-          className="border rounded px-4 py-1.5 text-sm text-gray-700 hover:bg-gray-50 transition-colors"
-        >
-          Upload CSV / Excel
+        <button onClick={() => inputRef.current?.click()} className="btn-secondary">
+          📁 Upload CSV / Excel
         </button>
         {keyVerses.size > 0 && (
           <button
             onClick={() => { onClear(); setFileName(""); setErrors([]); }}
-            className="text-sm text-red-500 hover:text-red-700"
+            className="text-sm font-semibold text-red-400 hover:text-red-600 transition-colors"
           >
-            Clear
+            ✕ Clear
           </button>
         )}
         {fileName && (
-          <span className="text-xs text-gray-500">{fileName} — {keyVerses.size} verses loaded</span>
+          <span className="bq-badge bq-badge-green">✓ {fileName} — {keyVerses.size} verses</span>
         )}
         <input
           ref={inputRef}
@@ -146,21 +143,25 @@ export default function KeyVerseUpload({ keyVerses, clubStyles, onLoad, onClear 
       </div>
 
       {errors.length > 0 && (
-        <div className="text-xs text-red-600 space-y-0.5">
-          {errors.slice(0, 5).map((e, i) => <p key={i}>{e}</p>)}
+        <div className="rounded-xl px-3 py-2 text-xs space-y-0.5"
+             style={{ background: "#fff1f2", border: "1.5px solid #fecdd3", color: "#be123c" }}>
+          {errors.slice(0, 5).map((e, i) => <p key={i}>⚠️ {e}</p>)}
           {errors.length > 5 && <p>…and {errors.length - 5} more errors</p>}
         </div>
       )}
 
       {clubNames.length > 0 && (
-        <p className="text-xs text-gray-500">
-          Clubs: {clubNames.map((c) => `${c} (${[...keyVerses.values()].filter((v) => v === c).length})`).join(" · ")}
-        </p>
+        <div className="flex gap-1.5 flex-wrap">
+          {clubNames.map((c) => (
+            <span key={c} className="bq-badge">
+              {c} ({[...keyVerses.values()].filter((v) => v === c).length})
+            </span>
+          ))}
+        </div>
       )}
 
-      <p className="text-xs text-gray-400">
-        Expected columns: <code>Book, Chapter, Verse, Club</code> — Club column optional (defaults to "Club 150").
-        Club can be "75", "150", "300", "Club 150", or any custom name.
+      <p className="text-xs text-violet-400">
+        Expected columns: <code className="bg-violet-100 px-1 rounded">Book, Chapter, Verse, Club</code> — Club optional (defaults to "Club 150").
       </p>
     </div>
   );
